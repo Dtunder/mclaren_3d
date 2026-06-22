@@ -58,7 +58,7 @@ body {
 }
 
 /* Enable pointer events on active interactive components */
-.header, .config-panel, .bottom-controls {
+.header, .config-panel, .telemetry-panel, .bottom-controls {
     pointer-events: auto;
 }
 
@@ -127,8 +127,8 @@ body {
     letter-spacing: 1px;
 }
 
-/* Configuration Sidebar */
-.config-panel {
+/* Configuration Sidebar & Telemetry Panel */
+.config-panel, .telemetry-panel {
     grid-area: sidebar;
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
@@ -394,21 +394,138 @@ input:checked + .slider:before {
     gap: 6px;
 }
 
+/* Telemetry specifics */
+.energy-flow-container {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.telemetry-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.tel-stat-box {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tel-lbl {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.tel-val {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.soc-bar-bg {
+    width: 100%;
+    height: 8px;
+    background: #222;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 4px;
+    margin-bottom: 2px;
+}
+
+.soc-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00ffff, #0df824);
+    transition: width 0.3s ease;
+}
+
+.pedal-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.pedal-btn {
+    padding: 16px;
+    border-radius: 12px;
+    border: none;
+    font-family: var(--font-family);
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.brake-pedal {
+    background: rgba(255, 0, 60, 0.1);
+    color: #ff003c;
+    border: 1px solid rgba(255, 0, 60, 0.3);
+}
+
+.brake-pedal:active, .brake-pedal.active {
+    background: rgba(255, 0, 60, 0.4);
+    box-shadow: 0 0 15px rgba(255, 0, 60, 0.5);
+    transform: scale(0.95);
+}
+
+.gas-pedal {
+    background: rgba(13, 248, 36, 0.1);
+    color: #0df824;
+    border: 1px solid rgba(13, 248, 36, 0.3);
+}
+
+.gas-pedal:active, .gas-pedal.active {
+    background: rgba(13, 248, 36, 0.4);
+    box-shadow: 0 0 15px rgba(13, 248, 36, 0.5);
+    transform: scale(0.95);
+}
+
+/* Energy Flow Animations */
+.flow-path {
+    stroke-dashoffset: 0;
+}
+
+.flow-forward {
+    animation: flowAnim 1s linear infinite reverse;
+}
+
+.flow-backward {
+    animation: flowAnim 1s linear infinite;
+}
+
+@keyframes flowAnim {
+    to {
+        stroke-dashoffset: 30;
+    }
+}
+
 /* Custom Scrollbar for Config Panel */
-.config-panel::-webkit-scrollbar {
+.config-panel::-webkit-scrollbar, .telemetry-panel::-webkit-scrollbar {
     width: 6px;
 }
 
-.config-panel::-webkit-scrollbar-track {
+.config-panel::-webkit-scrollbar-track, .telemetry-panel::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.config-panel::-webkit-scrollbar-thumb {
+.config-panel::-webkit-scrollbar-thumb, .telemetry-panel::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
 }
 
-.config-panel::-webkit-scrollbar-thumb:hover {
+.config-panel::-webkit-scrollbar-thumb:hover, .telemetry-panel::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.25);
 }
 
