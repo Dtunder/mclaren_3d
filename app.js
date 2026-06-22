@@ -37,6 +37,8 @@ const modelObjBtn = document.getElementById('model-obj');
 const colorButtons = document.querySelectorAll('.color-btn');
 const finishMetallic = document.getElementById('finish-metallic');
 const finishMatte = document.getElementById('finish-matte');
+const sliderRoughness = document.getElementById('slider-roughness');
+const sliderMetalness = document.getElementById('slider-metalness');
 const rimSport = document.getElementById('rim-sport');
 const rimAero = document.getElementById('rim-aero');
 const caliperButtons = document.querySelectorAll('.caliper-btn');
@@ -497,6 +499,9 @@ function setupEventListeners() {
         materials.body.clearcoat = 1.0;
         materials.body.clearcoatRoughness = 0.04;
         materials.body.needsUpdate = true;
+        
+        if (sliderRoughness) sliderRoughness.value = 0.12;
+        if (sliderMetalness) sliderMetalness.value = 0.92;
     });
 
     finishMatte.addEventListener('click', () => {
@@ -509,7 +514,33 @@ function setupEventListeners() {
         materials.body.clearcoat = 0.05;
         materials.body.clearcoatRoughness = 0.0;
         materials.body.needsUpdate = true;
+        
+        if (sliderRoughness) sliderRoughness.value = 0.55;
+        if (sliderMetalness) sliderMetalness.value = 0.28;
     });
+
+    // 2.5 Slider updates
+    if (sliderRoughness) {
+        sliderRoughness.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            materials.body.roughness = val;
+            materials.body.needsUpdate = true;
+            // Uncheck predefined finish modes if customized
+            finishMetallic.classList.remove('active');
+            finishMatte.classList.remove('active');
+        });
+    }
+
+    if (sliderMetalness) {
+        sliderMetalness.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            materials.body.metalness = val;
+            materials.body.needsUpdate = true;
+            // Uncheck predefined finish modes if customized
+            finishMetallic.classList.remove('active');
+            finishMatte.classList.remove('active');
+        });
+    }
 
     // 3. Wheel Alloy styling
     rimSport.addEventListener('click', () => {

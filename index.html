@@ -67,6 +67,21 @@
                 </div>
             </div>
 
+            <!-- Paint Parameters -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-sliders"></i> Lackierungsparameter</h3>
+                <div class="slider-container" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; color: var(--text-primary);">
+                    <div class="slider-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="slider-roughness">Rauhigkeit</label>
+                        <input type="range" id="slider-roughness" min="0.0" max="1.0" step="0.01" value="0.12" style="width: 60%; accent-color: var(--brand-orange);">
+                    </div>
+                    <div class="slider-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="slider-metalness">Metallwert</label>
+                        <input type="range" id="slider-metalness" min="0.0" max="1.0" step="0.01" value="0.92" style="width: 60%; accent-color: var(--brand-orange);">
+                    </div>
+                </div>
+            </div>
+
             <!-- Body Color Selector -->
             <div class="control-group">
                 <h3><i class="fa-solid fa-palette"></i> Aussenfarbe</h3>
