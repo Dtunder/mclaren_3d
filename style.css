@@ -325,6 +325,45 @@ input:checked + .slider:before {
     border-radius: 50%;
 }
 
+/* HUD Telemetry */
+.hud-telemetry {
+    position: absolute;
+    bottom: 40px;
+    right: 420px; /* To be left of the sidebar */
+    background: var(--card-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--brand-orange);
+    border-radius: 12px;
+    padding: 16px 24px;
+    display: flex;
+    gap: 32px;
+    box-shadow: 0 0 20px rgba(255, 90, 0, 0.2);
+    z-index: 20;
+    pointer-events: none;
+    animation: slideUp 0.5s ease;
+}
+
+.hud-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hud-val {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--brand-orange);
+    text-shadow: 0 0 10px var(--glow-orange);
+    font-variant-numeric: tabular-nums;
+}
+
+.hud-lbl {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+}
+
 /* Bottom Controls Section */
 .bottom-controls {
     grid-area: footer;
