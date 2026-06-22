@@ -1,6 +1,11 @@
 // McLaren P1 3D Configurator
 // Powered by Three.js & glTF Loader
 
+import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/environments/RoomEnvironment.js';
+
 // Global variables
 let scene, camera, renderer, controls;
 let carModel;
@@ -75,8 +80,13 @@ function init() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
 
+    // Setup a basic environment map for reflections
+    const environment = new RoomEnvironment();
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmremGenerator.fromScene(environment).texture;
+
     // 4. Create Orbit Controls
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.03; // Limit camera from going below ground
@@ -109,7 +119,8 @@ function setupMaterials() {
         roughness: 0.12,
         metalness: 0.92,
         clearcoat: 1.0,
-        clearcoatRoughness: 0.04
+        clearcoatRoughness: 0.04,
+        envMapIntensity: 2.0
     });
 
     // Highly reflective dark tinted glass
@@ -119,14 +130,16 @@ function setupMaterials() {
         metalness: 0.95,
         transparent: true,
         opacity: 0.90,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        envMapIntensity: 1.5
     });
 
     // Stealth Matte Black rims
     materials.rim = new THREE.MeshStandardMaterial({
         color: 0x151515,
         roughness: 0.35,
-        metalness: 0.8
+        metalness: 0.8,
+        envMapIntensity: 1.5
     });
 
     // Realistic tire rubber
@@ -159,7 +172,8 @@ function setupMaterials() {
     materials.chrome = new THREE.MeshStandardMaterial({
         color: 0xcccccc,
         roughness: 0.08,
-        metalness: 0.95
+        metalness: 0.95,
+        envMapIntensity: 3.0
     });
 
     // Carbon fiber elements
@@ -173,7 +187,8 @@ function setupMaterials() {
     materials.brakeDisc = new THREE.MeshStandardMaterial({
         color: 0x555555,
         roughness: 0.35,
-        metalness: 0.9
+        metalness: 0.9,
+        envMapIntensity: 1.5
     });
 }
 
@@ -239,7 +254,7 @@ function setupLighting() {
 }
 
 function loadModel() {
-    const loader = new THREE.GLTFLoader();
+    const loader = new GLTFLoader();
     
     loader.load(
         'mclaren_p1.glb',

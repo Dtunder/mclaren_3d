@@ -161,6 +161,11 @@ body {
 .control-group {
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     padding-top: 20px;
+    transition: border-color 0.3s ease;
+}
+
+.control-group:hover {
+    border-color: rgba(255, 90, 0, 0.3);
 }
 
 .control-group h3 {
@@ -203,7 +208,8 @@ body {
 }
 
 .color-btn:hover, .caliper-btn:hover {
-    transform: scale(1.12);
+    transform: scale(1.18);
+    box-shadow: 0 0 18px 4px rgba(255, 90, 0, 0.55), inset 0 2px 4px rgba(0,0,0,0.4);
 }
 
 .color-btn.active, .caliper-btn.active {
@@ -232,6 +238,11 @@ body {
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
+}
+
+.toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-btn.active {
