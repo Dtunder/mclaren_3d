@@ -133,6 +133,17 @@
                 </div>
             </div>
 
+            <!-- Engine RPM Option (Hidden by default, shown in Drive Mode) -->
+            <div class="control-group" id="rpm-group" style="display: none;">
+                <h3><i class="fa-solid fa-tachometer-alt"></i> Engine RPM</h3>
+                <div class="slider-container" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; color: var(--text-primary);">
+                    <div class="slider-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="slider-rpm">RPM</label>
+                        <input type="range" id="slider-rpm" min="800" max="8000" step="10" value="800" style="width: 70%; accent-color: var(--brand-orange);">
+                    </div>
+                </div>
+            </div>
+
             <!-- Spoiler Option -->
             <div class="control-group">
                 <h3><i class="fa-solid fa-wind"></i> Aerodynamik</h3>

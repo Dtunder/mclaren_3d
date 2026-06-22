@@ -55,6 +55,14 @@ const btnDrive = document.getElementById('btn-drive');
 const loaderContainer = document.getElementById('loader-container');
 const progressBar = document.getElementById('progress-bar');
 const loaderStatus = document.getElementById('loader-status');
+const rpmGroup = document.getElementById('rpm-group');
+const sliderRpm = document.getElementById('slider-rpm');
+
+// Audio Context & Synthesizer variables
+let audioCtx = null;
+let engineOscillator = null;
+let engineFilter = null;
+let engineGain = null;
 
 // App state
 let config = {
@@ -65,7 +73,8 @@ let config = {
     spoilerActive: true,
     lightsActive: true,
     autoRotate: false,
-    driveMode: false
+    driveMode: false,
+    rpm: 800
 };
 
 // Base positions of the spoiler for active aerodynamics animation
@@ -121,6 +130,72 @@ function init() {
 
     // 10. Start Animation Loop
     animate();
+}
+
+function initEngineSound() {
+    if (audioCtx) return; // already initialized
+
+    // Create new AudioContext
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Create oscillator (simulate engine combustion strokes)
+    engineOscillator = audioCtx.createOscillator();
+    engineOscillator.type = 'sawtooth';
+
+    // Create lowpass filter (simulate exhaust muffling and air intake resonance)
+    engineFilter = audioCtx.createBiquadFilter();
+    engineFilter.type = 'lowpass';
+    engineFilter.Q.value = 5;
+
+    // Create gain node (volume control)
+    engineGain = audioCtx.createGain();
+    engineGain.gain.value = 0; // start silent
+
+    // Connect the nodes
+    engineOscillator.connect(engineFilter);
+    engineFilter.connect(engineGain);
+    engineGain.connect(audioCtx.destination);
+
+    // Start oscillator
+    engineOscillator.start();
+
+    // Apply initial RPM state
+    updateEngineSound(config.rpm);
+}
+
+function updateEngineSound(rpm) {
+    if (!audioCtx || !engineOscillator) return;
+
+    // Map RPM (800-8000) to Frequency (e.g. 30Hz - 300Hz)
+    // At 800 RPM, freq is around 30Hz
+    // At 8000 RPM, freq is around 300Hz
+    const minRpm = 800;
+    const maxRpm = 8000;
+    const minFreq = 35;
+    const maxFreq = 300;
+
+    const freq = minFreq + ((rpm - minRpm) / (maxRpm - minRpm)) * (maxFreq - minFreq);
+
+    // Map RPM to Filter Cutoff Frequency (opens up as RPM increases)
+    const minCutoff = 100;
+    const maxCutoff = 2500;
+    const cutoff = minCutoff + ((rpm - minRpm) / (maxRpm - minRpm)) * (maxCutoff - minCutoff);
+
+    // Modulate pitch and filter
+    engineOscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
+    engineFilter.frequency.setTargetAtTime(cutoff, audioCtx.currentTime, 0.1);
+}
+
+function toggleEngineSound(active) {
+    if (active) {
+        if (!audioCtx) initEngineSound();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        engineGain.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.5); // Fade in
+    } else {
+        if (engineGain) {
+            engineGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.5); // Fade out
+        }
+    }
 }
 
 function setupMaterials() {
@@ -671,11 +746,29 @@ function setupEventListeners() {
     btnDrive.addEventListener('click', () => {
         config.driveMode = !config.driveMode;
         btnDrive.classList.toggle('highlight', config.driveMode);
+
         if (config.driveMode) {
             config.autoRotate = false;
             btnSpin.classList.remove('highlight');
+            rpmGroup.style.display = 'block';
+            toggleEngineSound(true);
+        } else {
+            rpmGroup.style.display = 'none';
+            toggleEngineSound(false);
+            // reset rpm
+            config.rpm = 800;
+            sliderRpm.value = 800;
+            updateEngineSound(config.rpm);
         }
     });
+
+    // 10. RPM Slider logic
+    if (sliderRpm) {
+        sliderRpm.addEventListener('input', (e) => {
+            config.rpm = parseInt(e.target.value);
+            updateEngineSound(config.rpm);
+        });
+    }
 
     window.addEventListener('resize', onWindowResize);
 }
@@ -715,16 +808,21 @@ function animate() {
 
     // Interactive drive mode
     if (config.driveMode) {
+        // Map RPM to wheel spin speed and vibration frequency
+        const spinSpeed = 0.05 + (config.rpm / 8000) * 0.5;
+        const vibrationFreq = 2.0 + (config.rpm / 8000) * 5.0;
+        const vibrationAmp = 0.02 + (config.rpm / 8000) * 0.04;
+
         // Spin wheels
         wheels.forEach(wheel => {
             // Rotates wheels around their local rotation axis (which is local Y after importing)
-            wheel.rotation.y += 0.25;
+            wheel.rotation.y += spinSpeed;
         });
 
         // Simulates dynamic driving camera track
         camera.position.x = Math.sin(time * 0.4) * 6.8;
         camera.position.z = Math.cos(time * 0.4) * 6.8;
-        camera.position.y = 1.5 + Math.sin(time * 2.5) * 0.04; // High-frequency road vibration
+        camera.position.y = 1.5 + Math.sin(time * vibrationFreq) * vibrationAmp; // High-frequency road vibration
         controls.target.set(0, 0.45 + Math.sin(time * 1.8) * 0.01, 0);
     }
 
