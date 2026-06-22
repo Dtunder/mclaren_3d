@@ -51,6 +51,21 @@ const lightsToggle = document.getElementById('lights-toggle');
 const btnSpin = document.getElementById('btn-spin');
 const btnReset = document.getElementById('btn-reset');
 const btnDrive = document.getElementById('btn-drive');
+const configPanel = document.getElementById('config-panel');
+const telemetryPanel = document.getElementById('telemetry-panel');
+
+// Telemetry & Pedals
+const btnGas = document.getElementById('btn-gas');
+const btnBrake = document.getElementById('btn-brake');
+const valV8Torque = document.getElementById('val-v8-torque');
+const valETorque = document.getElementById('val-e-torque');
+const valSocBar = document.getElementById('val-soc-bar');
+const valSocText = document.getElementById('val-soc-text');
+const valSpeed = document.getElementById('val-speed');
+
+const pathV8Wheel = document.getElementById('path-v8-wheel');
+const pathBatMot = document.getElementById('path-bat-mot');
+const pathMotWheel = document.getElementById('path-mot-wheel');
 
 const loaderContainer = document.getElementById('loader-container');
 const progressBar = document.getElementById('progress-bar');
@@ -66,6 +81,16 @@ let config = {
     lightsActive: true,
     autoRotate: false,
     driveMode: false
+};
+
+// Telemetry state
+let telemetry = {
+    soc: 100, // 0 to 100
+    speed: 0, // km/h
+    isAccelerating: false,
+    isBraking: false,
+    v8Torque: 0,
+    eTorque: 0
 };
 
 // Base positions of the spoiler for active aerodynamics animation
@@ -674,7 +699,50 @@ function setupEventListeners() {
         if (config.driveMode) {
             config.autoRotate = false;
             btnSpin.classList.remove('highlight');
+
+            // Show telemetry
+            configPanel.style.display = 'none';
+            telemetryPanel.style.display = 'flex';
+        } else {
+            // Hide telemetry
+            configPanel.style.display = 'flex';
+            telemetryPanel.style.display = 'none';
+            telemetry.isAccelerating = false;
+            telemetry.isBraking = false;
+            btnGas.classList.remove('active');
+            btnBrake.classList.remove('active');
+            telemetry.speed = 0; // stop moving when exited
         }
+    });
+
+    // Pedals interactions
+    const startGas = () => { if (config.driveMode) { telemetry.isAccelerating = true; btnGas.classList.add('active'); } };
+    const stopGas = () => { telemetry.isAccelerating = false; btnGas.classList.remove('active'); };
+    const startBrake = () => { if (config.driveMode) { telemetry.isBraking = true; btnBrake.classList.add('active'); } };
+    const stopBrake = () => { telemetry.isBraking = false; btnBrake.classList.remove('active'); };
+
+    btnGas.addEventListener('mousedown', startGas);
+    btnGas.addEventListener('touchstart', startGas);
+    window.addEventListener('mouseup', stopGas);
+    window.addEventListener('touchend', stopGas);
+
+    btnBrake.addEventListener('mousedown', startBrake);
+    btnBrake.addEventListener('touchstart', startBrake);
+    window.addEventListener('mouseup', stopBrake); // handled above by window but just to be safe
+    // Note window level listeners are better for release events so we catch if user drags mouse away
+
+    // Keyboard bindings for pedals
+    window.addEventListener('keydown', (e) => {
+        if (!config.driveMode) return;
+        const key = e.key.toLowerCase();
+        if (key === 'w' || e.key === 'ArrowUp') startGas();
+        if (key === 's' || e.key === 'ArrowDown') startBrake();
+    });
+    window.addEventListener('keyup', (e) => {
+        if (!config.driveMode) return;
+        const key = e.key.toLowerCase();
+        if (key === 'w' || e.key === 'ArrowUp') stopGas();
+        if (key === 's' || e.key === 'ArrowDown') stopBrake();
     });
 
     window.addEventListener('resize', onWindowResize);
@@ -715,17 +783,95 @@ function animate() {
 
     // Interactive drive mode
     if (config.driveMode) {
-        // Spin wheels
+        // --- Physics & Telemetry Logic ---
+        if (telemetry.isAccelerating) {
+            telemetry.speed = Math.min(350, telemetry.speed + 1.2); // max 350kmh
+            telemetry.v8Torque = Math.min(720, telemetry.v8Torque + 50); // V8 Torque build up
+            if (telemetry.soc > 0) {
+                telemetry.eTorque = Math.min(260, telemetry.eTorque + 20); // E-motor torque build up
+                telemetry.soc = Math.max(0, telemetry.soc - 0.05); // Consume battery
+            } else {
+                telemetry.eTorque = Math.max(0, telemetry.eTorque - 10);
+            }
+        } else if (telemetry.isBraking) {
+            telemetry.speed = Math.max(0, telemetry.speed - 3.0);
+            telemetry.v8Torque = Math.max(0, telemetry.v8Torque - 100);
+            if (telemetry.speed > 0 && telemetry.soc < 100) {
+                // Regen braking
+                telemetry.eTorque = Math.max(-200, telemetry.eTorque - 30);
+                telemetry.soc = Math.min(100, telemetry.soc + 0.1); // Recover battery
+            } else {
+                telemetry.eTorque = Math.max(0, telemetry.eTorque - 100);
+            }
+        } else {
+            // Coasting
+            telemetry.speed = Math.max(0, telemetry.speed - 0.5);
+            telemetry.v8Torque = Math.max(0, telemetry.v8Torque - 40);
+            telemetry.eTorque = telemetry.eTorque > 0 ? Math.max(0, telemetry.eTorque - 20) : Math.min(0, telemetry.eTorque + 20);
+        }
+
+        // --- Update UI ---
+        valSpeed.innerText = `${Math.round(telemetry.speed)} km/h`;
+        valV8Torque.innerText = `${Math.round(telemetry.v8Torque)} Nm`;
+        valETorque.innerText = `${Math.round(Math.abs(telemetry.eTorque))} Nm${telemetry.eTorque < 0 ? ' (REGEN)' : ''}`;
+
+        valSocBar.style.width = `${telemetry.soc}%`;
+        valSocText.innerText = `${Math.round(telemetry.soc)}%`;
+
+        // Color transition based on SOC
+        if (telemetry.soc < 20) {
+            valSocBar.style.background = 'linear-gradient(90deg, #ff0000, #ff5a00)';
+        } else {
+            valSocBar.style.background = 'linear-gradient(90deg, #00ffff, #0df824)';
+        }
+
+        // --- Update Energy Flow SVG Paths ---
+        pathV8Wheel.className.baseVal = 'flow-path';
+        pathBatMot.className.baseVal = 'flow-path';
+        pathMotWheel.className.baseVal = 'flow-path';
+
+        if (telemetry.v8Torque > 10) {
+            pathV8Wheel.className.baseVal += ' flow-forward';
+            pathV8Wheel.style.animationDuration = `${Math.max(0.2, 1.5 - (telemetry.v8Torque/720))}s`;
+        }
+
+        if (telemetry.eTorque > 10) {
+            pathBatMot.className.baseVal += ' flow-forward';
+            pathMotWheel.className.baseVal += ' flow-forward';
+            let eDur = `${Math.max(0.2, 1.5 - (telemetry.eTorque/260))}s`;
+            pathBatMot.style.animationDuration = eDur;
+            pathMotWheel.style.animationDuration = eDur;
+        } else if (telemetry.eTorque < -10) { // Regen
+            pathBatMot.className.baseVal += ' flow-backward';
+            pathMotWheel.className.baseVal += ' flow-backward';
+            let rDur = `${Math.max(0.2, 1.5 - (Math.abs(telemetry.eTorque)/200))}s`;
+            pathBatMot.style.animationDuration = rDur;
+            pathMotWheel.style.animationDuration = rDur;
+        }
+
+        // --- Visually Update Car ---
+        const speedFactor = telemetry.speed / 350;
+
+        // Spin wheels based on speed
         wheels.forEach(wheel => {
             // Rotates wheels around their local rotation axis (which is local Y after importing)
-            wheel.rotation.y += 0.25;
+            wheel.rotation.y += speedFactor * 0.8;
         });
 
-        // Simulates dynamic driving camera track
+        // Simulates dynamic driving camera track based on speed
+        // Basic panning based on time
         camera.position.x = Math.sin(time * 0.4) * 6.8;
         camera.position.z = Math.cos(time * 0.4) * 6.8;
-        camera.position.y = 1.5 + Math.sin(time * 2.5) * 0.04; // High-frequency road vibration
-        controls.target.set(0, 0.45 + Math.sin(time * 1.8) * 0.01, 0);
+
+        // Vibration amplitude increases with speed
+        const shakeAmplitude = speedFactor * 0.05;
+        camera.position.y = 1.5 + Math.sin(time * 35.0) * shakeAmplitude; // High-frequency road vibration
+        controls.target.set(0, 0.45 + Math.sin(time * 25.0) * (shakeAmplitude * 0.2), 0);
+    } else {
+        // Reset SVG classes when not driving
+        if (pathV8Wheel) pathV8Wheel.className.baseVal = 'flow-path';
+        if (pathBatMot) pathBatMot.className.baseVal = 'flow-path';
+        if (pathMotWheel) pathMotWheel.className.baseVal = 'flow-path';
     }
 
     renderer.render(scene, camera);

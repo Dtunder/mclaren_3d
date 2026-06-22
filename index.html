@@ -60,8 +60,96 @@
             </div>
         </header>
 
+        <!-- Telemetry Panel (Hidden by default, shown in Drive Mode) -->
+        <section class="telemetry-panel" id="telemetry-panel" style="display: none;">
+            <div class="panel-header">
+                <h2>HYBRID TELEMETRY</h2>
+                <p>Live Energy Flow & Powertrain Status</p>
+            </div>
+
+            <!-- Energy Flow Visualization -->
+            <div class="energy-flow-container">
+                <svg width="100%" height="150" viewBox="0 0 300 150" class="energy-svg">
+                    <defs>
+                        <!-- Glow filters -->
+                        <filter id="glow-orange" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                        <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- Base nodes -->
+                    <circle cx="50" cy="40" r="20" fill="#222" stroke="#ff5a00" stroke-width="2"/>
+                    <text x="50" y="44" fill="#fff" font-size="12" text-anchor="middle" font-family="Outfit">V8</text>
+
+                    <rect x="30" y="100" width="40" height="30" rx="5" fill="#222" stroke="#00ffff" stroke-width="2"/>
+                    <text x="50" y="119" fill="#fff" font-size="12" text-anchor="middle" font-family="Outfit">BAT</text>
+
+                    <circle cx="150" cy="75" r="20" fill="#222" stroke="#0df824" stroke-width="2"/>
+                    <text x="150" y="79" fill="#fff" font-size="12" text-anchor="middle" font-family="Outfit">MOT</text>
+
+                    <circle cx="250" cy="75" r="20" fill="#222" stroke="#ccc" stroke-width="2"/>
+                    <text x="250" y="79" fill="#fff" font-size="12" text-anchor="middle" font-family="Outfit">WHL</text>
+
+                    <!-- Tracks (Paths) -->
+                    <!-- V8 to Wheels (Direct via Gearbox) -->
+                    <path d="M 70 40 L 230 40" stroke="#333" stroke-width="6" fill="none" />
+                    <path id="path-v8-wheel" class="flow-path" d="M 70 40 L 230 40" stroke="#ff5a00" stroke-width="4" fill="none" stroke-dasharray="10,5" filter="url(#glow-orange)" />
+
+                    <!-- Battery to Motor -->
+                    <path d="M 70 115 L 150 115 L 150 95" stroke="#333" stroke-width="6" fill="none" />
+                    <path id="path-bat-mot" class="flow-path" d="M 70 115 L 150 115 L 150 95" stroke="#00ffff" stroke-width="4" fill="none" stroke-dasharray="10,5" filter="url(#glow-cyan)" />
+
+                    <!-- Motor to Wheels -->
+                    <path d="M 170 75 L 230 75" stroke="#333" stroke-width="6" fill="none" />
+                    <path id="path-mot-wheel" class="flow-path" d="M 170 75 L 230 75" stroke="#0df824" stroke-width="4" fill="none" stroke-dasharray="10,5" />
+                </svg>
+            </div>
+
+            <!-- Stats -->
+            <div class="telemetry-stats">
+                <div class="tel-stat-box">
+                    <span class="tel-lbl">V8 TORQUE</span>
+                    <span class="tel-val" id="val-v8-torque">0 Nm</span>
+                </div>
+                <div class="tel-stat-box">
+                    <span class="tel-lbl">E-MOTOR</span>
+                    <span class="tel-val" id="val-e-torque">0 Nm</span>
+                </div>
+                <div class="tel-stat-box">
+                    <span class="tel-lbl">BATTERY SOC</span>
+                    <div class="soc-bar-bg">
+                        <div class="soc-bar-fill" id="val-soc-bar" style="width: 100%;"></div>
+                    </div>
+                    <span class="tel-val" id="val-soc-text">100%</span>
+                </div>
+                <div class="tel-stat-box">
+                    <span class="tel-lbl">SPEED</span>
+                    <span class="tel-val" id="val-speed">0 km/h</span>
+                </div>
+            </div>
+
+            <!-- Pedals -->
+            <div class="pedal-controls">
+                <button class="pedal-btn brake-pedal" id="btn-brake">BRAKE (S/↓)</button>
+                <button class="pedal-btn gas-pedal" id="btn-gas">ACCELERATE (W/↑)</button>
+            </div>
+        </section>
+
         <!-- Configuration Sidebar -->
-        <section class="config-panel">
+        <section class="config-panel" id="config-panel">
             <div class="panel-header">
                 <h2>DESIGN STUDIO</h2>
                 <p>Gestalte deinen individuellen Supersportwagen</p>
