@@ -44,6 +44,10 @@ const rimSport = document.getElementById('rim-sport');
 const rimAero = document.getElementById('rim-aero');
 const caliperButtons = document.querySelectorAll('.caliper-btn');
 const spoilerToggle = document.getElementById('spoiler-toggle');
+const aeroFlowToggle = document.getElementById('aero-flow-toggle');
+const downforceHud = document.getElementById('downforce-hud');
+const downforceVal = document.getElementById('downforce-val');
+const downforceBar = document.getElementById('downforce-bar');
 const lightNeonBtn = document.getElementById('light-neon');
 const lightStudioBtn = document.getElementById('light-studio');
 const lightSunsetBtn = document.getElementById('light-sunset');
@@ -63,6 +67,7 @@ let config = {
     rimFinish: 'stealth', // stealth vs chrome
     caliperColor: '#ffcc00',
     spoilerActive: true,
+    aeroActive: false,
     lightsActive: true,
     autoRotate: false,
     driveMode: false
@@ -71,6 +76,12 @@ let config = {
 // Base positions of the spoiler for active aerodynamics animation
 let initialSpoilerY = null;
 let initialSpoilerZ = null;
+
+// Aerodynamics Flow Visualizer variables
+let flowParticles;
+const particleCount = 1000;
+let simulatedSpeed = 0; // km/h
+let currentDownforce = 0;
 
 function init() {
     // 1. Create Scene
@@ -113,14 +124,72 @@ function init() {
     // 7. Setup Advanced Studio Lighting
     setupLighting();
 
-    // 8. Load McLaren P1 GLB Model
+    // 8. Setup Flow Visualizer Particle System
+    createFlowVisualizer();
+
+    // 9. Load McLaren P1 GLB Model
     loadModel();
 
-    // 9. Attach Event Listeners
+    // 10. Attach Event Listeners
     setupEventListeners();
 
-    // 10. Start Animation Loop
+    // 11. Start Animation Loop
     animate();
+}
+
+function createFlowVisualizer() {
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const opacities = new Float32Array(particleCount);
+
+    for (let i = 0; i < particleCount; i++) {
+        // Start randomly in front of the car
+        positions[i * 3] = (Math.random() - 0.5) * 2.5; // X spread
+        positions[i * 3 + 1] = Math.random() * 0.5 + 0.1; // Y height start
+        positions[i * 3 + 2] = Math.random() * 2.0 + 2.5; // Z start pos (front)
+
+        opacities[i] = Math.random();
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('aOpacity', new THREE.BufferAttribute(opacities, 1));
+
+    // Custom shader material for glowing lines/particles fading out
+    const material = new THREE.ShaderMaterial({
+        uniforms: {
+            color: { value: new THREE.Color(0x00ffff) }
+        },
+        vertexShader: `
+            attribute float aOpacity;
+            varying float vOpacity;
+            void main() {
+                vOpacity = aOpacity;
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_PointSize = 4.0 * (10.0 / -mvPosition.z);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `,
+        fragmentShader: `
+            uniform vec3 color;
+            varying float vOpacity;
+            void main() {
+                // Circle shape
+                float dist = length(gl_PointCoord - vec2(0.5));
+                if (dist > 0.5) discard;
+
+                // Soft glow
+                float alpha = (0.5 - dist) * 2.0 * vOpacity;
+                gl_FragColor = vec4(color, alpha);
+            }
+        `,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+    });
+
+    flowParticles = new THREE.Points(geometry, material);
+    flowParticles.visible = false;
+    scene.add(flowParticles);
 }
 
 function setupMaterials() {
@@ -641,6 +710,21 @@ function setupEventListeners() {
         config.spoilerActive = e.target.checked;
     });
 
+    // 5.5 Aero Flow Visualizer Toggle
+    aeroFlowToggle.addEventListener('change', (e) => {
+        config.aeroActive = e.target.checked;
+        if (config.aeroActive) {
+            flowParticles.visible = true;
+            downforceHud.classList.remove('hidden');
+            // Dim some lights to make flow more visible
+            if (mainCeilingLight) mainCeilingLight.intensity *= 0.5;
+        } else {
+            flowParticles.visible = false;
+            downforceHud.classList.add('hidden');
+            if (mainCeilingLight) mainCeilingLight.intensity *= 2.0;
+        }
+    });
+
     // 6. Xenon and tail lights toggle
     lightsToggle.addEventListener('change', (e) => {
         config.lightsActive = e.target.checked;
@@ -711,6 +795,94 @@ function animate() {
         controls.autoRotateSpeed = 2.0;
     } else {
         controls.autoRotate = false;
+    }
+
+    // Update Simulated Speed
+    if (config.driveMode) {
+        simulatedSpeed += (350 - simulatedSpeed) * 0.02; // Accelerate to 350 km/h
+    } else {
+        simulatedSpeed += (0 - simulatedSpeed) * 0.05; // Decelerate to 0
+    }
+
+    // Aerodynamics Flow Visualizer Animation
+    if (config.aeroActive && flowParticles) {
+        const positions = flowParticles.geometry.attributes.position.array;
+        const opacities = flowParticles.geometry.attributes.aOpacity.array;
+
+        // Speed of flow based on simulated speed, minimum base speed
+        const flowSpeed = 0.05 + (simulatedSpeed / 350) * 0.25;
+
+        for (let i = 0; i < particleCount; i++) {
+            let x = positions[i * 3];
+            let y = positions[i * 3 + 1];
+            let z = positions[i * 3 + 2];
+
+            // Move backwards
+            z -= flowSpeed;
+
+            // Simple aerodynamic profile approximation over the car
+            // Car goes from Z approx 2.5 to -2.5
+            // Highest point is around Z = -0.5
+            if (z > -2.5 && z < 2.5) {
+                // Parabolic arc over the roof
+                const roofProfile = Math.max(0, 1.2 - 0.3 * Math.pow(z + 0.5, 2));
+                // Base Y moves towards the roof profile if it hits the car
+                if (Math.abs(x) < 1.0) { // If over the car body width
+                    if (y < roofProfile + 0.1) {
+                         y += (roofProfile + 0.1 - y) * 0.2; // Push up
+                    }
+                }
+            } else if (z <= -2.5) {
+                // Drop down in the wake
+                y -= 0.02;
+            }
+
+            // Reset particles that go too far back
+            if (z < -4.0) {
+                x = (Math.random() - 0.5) * 2.5;
+                y = Math.random() * 0.5 + 0.1;
+                z = Math.random() * 1.0 + 2.5; // Respawn at front
+                opacities[i] = Math.random();
+            } else {
+                // Fade out at the back
+                if (z < -2.0) {
+                    opacities[i] *= 0.95;
+                }
+            }
+
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = z;
+        }
+
+        flowParticles.geometry.attributes.position.needsUpdate = true;
+        flowParticles.geometry.attributes.aOpacity.needsUpdate = true;
+
+        // Downforce Calculation
+        // Base downforce increases with square of speed
+        // Active spoiler adds a significant multiplier
+        const speedFactor = simulatedSpeed / 350;
+        const spoilerMultiplier = config.spoilerActive ? 1.6 : 1.0;
+        const targetDownforce = 600 * Math.pow(speedFactor, 2) * spoilerMultiplier;
+
+        currentDownforce += (targetDownforce - currentDownforce) * 0.1;
+
+        // Update UI
+        downforceVal.innerText = Math.round(currentDownforce);
+        const barWidth = Math.min(100, (currentDownforce / 600) * 100);
+        downforceBar.style.width = barWidth + '%';
+
+        // Change color based on intensity
+        if (barWidth > 80) {
+             downforceBar.style.background = 'linear-gradient(90deg, #ff0000, #ff5a00)';
+             flowParticles.material.uniforms.color.value.setHex(0xff3300); // Red hot flow
+        } else if (barWidth > 40) {
+             downforceBar.style.background = 'linear-gradient(90deg, #ff5a00, #ffcc00)';
+             flowParticles.material.uniforms.color.value.setHex(0xffa500); // Orange flow
+        } else {
+             downforceBar.style.background = 'linear-gradient(90deg, #00ffff, #0088ff)';
+             flowParticles.material.uniforms.color.value.setHex(0x00ffff); // Cyan calm flow
+        }
     }
 
     // Interactive drive mode
