@@ -16,7 +16,13 @@ let paintParts = [], rimParts = [], caliperParts = [];
 let headlights = [], taillights = [];
 let wheels = [];
 let spoiler = null; // object.009_cb_0 (McLaren active wing)
+let leftDoor = null; // object.006
+let rightDoor = null; // object.005
 let mainCeilingLight, keyNeonCyanLight, rimNeonOrangeLight; // Showroom Lights
+
+// Raycaster for door interactions
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
 // Materials configuration
 const materials = {
@@ -65,12 +71,20 @@ let config = {
     spoilerActive: true,
     lightsActive: true,
     autoRotate: false,
-    driveMode: false
+    driveMode: false,
+    leftDoorOpen: false,
+    rightDoorOpen: false
 };
 
 // Base positions of the spoiler for active aerodynamics animation
 let initialSpoilerY = null;
 let initialSpoilerZ = null;
+
+// Initial transform state for dihedral doors
+const initialDoors = {
+    left: { x: null, y: null, z: null, rx: null, ry: null, rz: null },
+    right: { x: null, y: null, z: null, rx: null, ry: null, rz: null }
+};
 
 function init() {
     // 1. Create Scene
@@ -353,6 +367,26 @@ function loadModel() {
                     }
                 }
                 
+                // Reference Door nodes (they may be Groups or Object3Ds, not necessarily Meshes, so we do it outside the isMesh block too just in case)
+                if (child.name === 'object.006') {
+                    leftDoor = child;
+                    initialDoors.left.x = leftDoor.position.x;
+                    initialDoors.left.y = leftDoor.position.y;
+                    initialDoors.left.z = leftDoor.position.z;
+                    initialDoors.left.rx = leftDoor.rotation.x;
+                    initialDoors.left.ry = leftDoor.rotation.y;
+                    initialDoors.left.rz = leftDoor.rotation.z;
+                }
+                if (child.name === 'object.005') {
+                    rightDoor = child;
+                    initialDoors.right.x = rightDoor.position.x;
+                    initialDoors.right.y = rightDoor.position.y;
+                    initialDoors.right.z = rightDoor.position.z;
+                    initialDoors.right.rx = rightDoor.rotation.x;
+                    initialDoors.right.ry = rightDoor.rotation.y;
+                    initialDoors.right.rz = rightDoor.rotation.z;
+                }
+
                 // Track wheels for rotation physics
                 if (child.name.toLowerCase().startsWith('wheel') && !child.name.includes('_')) {
                     wheels.push(child);
@@ -383,6 +417,43 @@ function loadModel() {
 }
 
 function setupEventListeners() {
+    // Raycast on click for interactive elements (Doors)
+    window.addEventListener('click', (event) => {
+        if (!carModel) return;
+
+        // Calculate mouse position in normalized device coordinates (-1 to +1)
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+
+        // Find intersections
+        const intersects = raycaster.intersectObject(carModel, true);
+
+        if (intersects.length > 0) {
+            // Find parent door node
+            let object = intersects[0].object;
+            let clickedLeft = false;
+            let clickedRight = false;
+
+            while (object) {
+                if (object === leftDoor) clickedLeft = true;
+                if (object === rightDoor) clickedRight = true;
+                object = object.parent;
+            }
+
+            if (clickedLeft) {
+                config.leftDoorOpen = !config.leftDoorOpen;
+                document.getElementById('hud-left-door').innerText = config.leftDoorOpen ? "OPEN" : "CLOSED";
+                document.getElementById('hud-left-door').style.color = config.leftDoorOpen ? "#0df824" : "var(--text-primary)";
+            } else if (clickedRight) {
+                config.rightDoorOpen = !config.rightDoorOpen;
+                document.getElementById('hud-right-door').innerText = config.rightDoorOpen ? "OPEN" : "CLOSED";
+                document.getElementById('hud-right-door').style.color = config.rightDoorOpen ? "#0df824" : "var(--text-primary)";
+            }
+        }
+    });
+
     // Lighting Presets
     if (lightNeonBtn && lightStudioBtn && lightSunsetBtn) {
         lightNeonBtn.addEventListener('click', () => {
@@ -703,6 +774,41 @@ function animate() {
         spoiler.position.y += (targetY - spoiler.position.y) * 0.08;
         spoiler.position.z += (targetZ - spoiler.position.z) * 0.08;
         spoiler.rotation.x += (targetRotX - spoiler.rotation.x) * 0.08;
+    }
+
+    // Dihedral Door Animation (Rotates up and outward)
+    if (leftDoor && initialDoors.left.x !== null) {
+        // Left dihedral logic: rotate Z to go up, rotate Y/X to angle outwards, translate slightly
+        const tRotZ = config.leftDoorOpen ? initialDoors.left.rz + Math.PI / 4 : initialDoors.left.rz;
+        const tRotX = config.leftDoorOpen ? initialDoors.left.rx + 0.2 : initialDoors.left.rx;
+        const tRotY = config.leftDoorOpen ? initialDoors.left.ry + 0.1 : initialDoors.left.ry;
+        const tPosY = config.leftDoorOpen ? initialDoors.left.y + 40.0 : initialDoors.left.y; // doors are scaled x100 initially in this gltf structure
+        const tPosX = config.leftDoorOpen ? initialDoors.left.x + 35.0 : initialDoors.left.x;
+        const tPosZ = config.leftDoorOpen ? initialDoors.left.z + 5.0 : initialDoors.left.z;
+
+        leftDoor.rotation.z += (tRotZ - leftDoor.rotation.z) * 0.08;
+        leftDoor.rotation.x += (tRotX - leftDoor.rotation.x) * 0.08;
+        leftDoor.rotation.y += (tRotY - leftDoor.rotation.y) * 0.08;
+        leftDoor.position.y += (tPosY - leftDoor.position.y) * 0.08;
+        leftDoor.position.x += (tPosX - leftDoor.position.x) * 0.08;
+        leftDoor.position.z += (tPosZ - leftDoor.position.z) * 0.08;
+    }
+
+    if (rightDoor && initialDoors.right.x !== null) {
+        // Right dihedral logic: inverse rotation for Z to go up, match other axes for symmetry
+        const tRotZ = config.rightDoorOpen ? initialDoors.right.rz - Math.PI / 4 : initialDoors.right.rz;
+        const tRotX = config.rightDoorOpen ? initialDoors.right.rx + 0.2 : initialDoors.right.rx;
+        const tRotY = config.rightDoorOpen ? initialDoors.right.ry - 0.1 : initialDoors.right.ry;
+        const tPosY = config.rightDoorOpen ? initialDoors.right.y + 40.0 : initialDoors.right.y;
+        const tPosX = config.rightDoorOpen ? initialDoors.right.x - 35.0 : initialDoors.right.x;
+        const tPosZ = config.rightDoorOpen ? initialDoors.right.z + 5.0 : initialDoors.right.z;
+
+        rightDoor.rotation.z += (tRotZ - rightDoor.rotation.z) * 0.08;
+        rightDoor.rotation.x += (tRotX - rightDoor.rotation.x) * 0.08;
+        rightDoor.rotation.y += (tRotY - rightDoor.rotation.y) * 0.08;
+        rightDoor.position.y += (tPosY - rightDoor.position.y) * 0.08;
+        rightDoor.position.x += (tPosX - rightDoor.position.x) * 0.08;
+        rightDoor.position.z += (tPosZ - rightDoor.position.z) * 0.08;
     }
 
     // Auto camera rotation
