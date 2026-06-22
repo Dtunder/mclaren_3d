@@ -4,11 +4,14 @@
 import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
+import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/loaders/OBJLoader.js';
 import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/environments/RoomEnvironment.js';
 
 // Global variables
 let scene, camera, renderer, controls;
 let carModel;
+let carModelGlb = null;
+let carModelObj = null;
 let paintParts = [], rimParts = [], caliperParts = [];
 let headlights = [], taillights = [];
 let wheels = [];
@@ -29,6 +32,8 @@ const materials = {
 };
 
 // UI Toggles & Controls
+const modelGlbBtn = document.getElementById('model-glb');
+const modelObjBtn = document.getElementById('model-obj');
 const colorButtons = document.querySelectorAll('.color-btn');
 const finishMetallic = document.getElementById('finish-metallic');
 const finishMatte = document.getElementById('finish-matte');
@@ -261,6 +266,7 @@ function loadModel() {
         // onLoad callback
         function (gltf) {
             carModel = gltf.scene;
+            carModelGlb = carModel;
 
             // 1. Auto-Scale and Auto-Center based on physical model dimensions
             const box = new THREE.Box3().setFromObject(carModel);
@@ -371,6 +377,104 @@ function loadModel() {
 }
 
 function setupEventListeners() {
+    // 0. Model Toggle
+    modelGlbBtn.addEventListener('click', () => {
+        if (carModel === carModelGlb) return;
+        
+        modelGlbBtn.classList.add('active');
+        modelObjBtn.classList.remove('active');
+        
+        if (carModelObj) {
+            scene.remove(carModelObj);
+        }
+        
+        carModel = carModelGlb;
+        if (carModelGlb) {
+            scene.add(carModelGlb);
+        }
+    });
+
+    modelObjBtn.addEventListener('click', () => {
+        if (carModel === carModelObj) return;
+
+        modelObjBtn.classList.add('active');
+        modelGlbBtn.classList.remove('active');
+
+        if (carModelGlb) {
+            scene.remove(carModelGlb);
+        }
+
+        if (carModelObj) {
+            carModel = carModelObj;
+            scene.add(carModelObj);
+        } else {
+            // Show loader while loading OBJ
+            loaderContainer.style.visibility = 'visible';
+            loaderContainer.style.opacity = '1';
+            loaderStatus.innerText = 'Lädt OBJ Modell... 0%';
+            progressBar.style.width = '0%';
+
+            const objLoader = new OBJLoader();
+            objLoader.load(
+                'mclaren.obj',
+                function (object) {
+                    carModelObj = object;
+                    carModel = carModelObj;
+
+                    // 1. Auto-Scale and Auto-Center based on physical model dimensions
+                    const box = new THREE.Box3().setFromObject(carModelObj);
+                    const size = box.getSize(new THREE.Vector3());
+                    const center = box.getCenter(new THREE.Vector3());
+
+                    // Scale to a standard showroom length (e.g. 4.5 units)
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scaleFactor = 4.5 / maxDim;
+                    carModelObj.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+                    // Recompute bounding box after scaling to position perfectly on grid
+                    const scaledBox = new THREE.Box3().setFromObject(carModelObj);
+                    const scaledMinY = scaledBox.min.y;
+                    
+                    // Center the model in X and Z, and place the lowest point on the floor (Y = 0)
+                    carModelObj.position.set(-center.x * scaleFactor, -scaledMinY, -center.z * scaleFactor);
+
+                    // Apply materials (simple approach: apply body material to all meshes)
+                    carModelObj.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                            child.material = materials.body;
+                        }
+                    });
+
+                    scene.add(carModelObj);
+
+                    // Hide Loading Screen
+                    loaderContainer.style.opacity = '0';
+                    setTimeout(() => {
+                        loaderContainer.style.visibility = 'hidden';
+                    }, 500);
+                },
+                function (xhr) {
+                    if (xhr.total > 0) {
+                        const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+                        progressBar.style.width = percent + '%';
+                        loaderStatus.innerText = `Lädt OBJ Modell... ${percent}%`;
+                    }
+                },
+                function (error) {
+                    console.error('Error loading OBJ model:', error);
+                    loaderStatus.innerText = 'Fehler beim Laden des OBJ-Modells.';
+                    // Hide after error
+                    setTimeout(() => {
+                        loaderContainer.style.opacity = '0';
+                        setTimeout(() => loaderContainer.style.visibility = 'hidden', 500);
+                    }, 2000);
+                }
+            );
+        }
+    });
+
     // 1. Paint Color changer
     colorButtons.forEach(btn => {
         btn.addEventListener('click', () => {
