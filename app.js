@@ -47,6 +47,15 @@ const spoilerToggle = document.getElementById('spoiler-toggle');
 const lightNeonBtn = document.getElementById('light-neon');
 const lightStudioBtn = document.getElementById('light-studio');
 const lightSunsetBtn = document.getElementById('light-sunset');
+
+// Tire Simulator UI
+const tireCorsaBtn = document.getElementById('tire-corsa');
+const tireTrofeoBtn = document.getElementById('tire-trofeo');
+const sliderPressure = document.getElementById('slider-pressure');
+const pressureValDisplay = document.getElementById('pressure-val');
+const hudGforce = document.getElementById('hud-gforce');
+const hudTemp = document.getElementById('hud-temp');
+const hudWear = document.getElementById('hud-wear');
 const lightsToggle = document.getElementById('lights-toggle');
 const btnSpin = document.getElementById('btn-spin');
 const btnReset = document.getElementById('btn-reset');
@@ -65,8 +74,42 @@ let config = {
     spoilerActive: true,
     lightsActive: true,
     autoRotate: false,
-    driveMode: false
+    driveMode: false,
+    tireCompound: 'corsa', // 'corsa' or 'trofeo'
+    tirePressure: 2.2,     // bar
+    currentTemp: 65.0      // dynamic °C
 };
+
+// Update HUD helper
+function updateTireTelemetry() {
+    let baseG, optPressure, baseWear;
+
+    if (config.tireCompound === 'corsa') {
+        baseG = 1.20;
+        optPressure = 2.2;
+        baseWear = 0.01;
+    } else {
+        baseG = 1.45;
+        optPressure = 1.9;
+        baseWear = 0.05;
+    }
+
+    // Deviation penalty: each 0.1 bar deviation from optimal reduces G-force
+    const pressureDeviation = Math.abs(config.tirePressure - optPressure);
+    const gPenalty = pressureDeviation * 0.1;
+    let actualG = baseG - gPenalty;
+    if (actualG < 0.8) actualG = 0.8;
+
+    // Wear increases heavily with bad pressure and compound type
+    const wearRate = baseWear + (pressureDeviation * 0.02);
+
+    if (hudGforce) hudGforce.innerText = actualG.toFixed(2) + ' G';
+    if (hudWear) hudWear.innerText = wearRate.toFixed(2) + ' %/km';
+}
+
+function updateHUDTemp() {
+    if (hudTemp) hudTemp.innerText = config.currentTemp.toFixed(1) + ' °C';
+}
 
 // Base positions of the spoiler for active aerodynamics animation
 let initialSpoilerY = null;
@@ -118,6 +161,10 @@ function init() {
 
     // 9. Attach Event Listeners
     setupEventListeners();
+
+    // Initialize telemetry
+    updateTireTelemetry();
+    updateHUDTemp();
 
     // 10. Start Animation Loop
     animate();
@@ -641,6 +688,31 @@ function setupEventListeners() {
         config.spoilerActive = e.target.checked;
     });
 
+    // Tire Simulation Events
+    if (tireCorsaBtn && tireTrofeoBtn) {
+        tireCorsaBtn.addEventListener('click', () => {
+            tireCorsaBtn.classList.add('active');
+            tireTrofeoBtn.classList.remove('active');
+            config.tireCompound = 'corsa';
+            updateTireTelemetry();
+        });
+
+        tireTrofeoBtn.addEventListener('click', () => {
+            tireTrofeoBtn.classList.add('active');
+            tireCorsaBtn.classList.remove('active');
+            config.tireCompound = 'trofeo';
+            updateTireTelemetry();
+        });
+    }
+
+    if (sliderPressure) {
+        sliderPressure.addEventListener('input', (e) => {
+            config.tirePressure = parseFloat(e.target.value);
+            if (pressureValDisplay) pressureValDisplay.innerText = config.tirePressure.toFixed(1);
+            updateTireTelemetry();
+        });
+    }
+
     // 6. Xenon and tail lights toggle
     lightsToggle.addEventListener('change', (e) => {
         config.lightsActive = e.target.checked;
@@ -712,6 +784,27 @@ function animate() {
     } else {
         controls.autoRotate = false;
     }
+
+    // Dynamic Tire Temperature
+    let targetTemp;
+    if (config.driveMode) {
+        // Temperature rises when driving, harder with Trofeo
+        targetTemp = config.tireCompound === 'trofeo' ? 95.0 : 80.0;
+
+        // Underpressure adds more heat
+        const optP = config.tireCompound === 'trofeo' ? 1.9 : 2.2;
+        if (config.tirePressure < optP) {
+            targetTemp += (optP - config.tirePressure) * 20;
+        }
+    } else {
+        // Cool down to ambient
+        targetTemp = 25.0;
+    }
+
+    // Smooth transition
+    config.currentTemp += (targetTemp - config.currentTemp) * 0.01;
+    // Update display only every few frames or just update DOM directly (could be optimized, but ok for now)
+    updateHUDTemp();
 
     // Interactive drive mode
     if (config.driveMode) {
