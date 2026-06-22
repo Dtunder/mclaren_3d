@@ -52,6 +52,12 @@ const btnSpin = document.getElementById('btn-spin');
 const btnReset = document.getElementById('btn-reset');
 const btnDrive = document.getElementById('btn-drive');
 
+const camFront = document.getElementById('cam-front');
+const camRear = document.getElementById('cam-rear');
+const camCockpit = document.getElementById('cam-cockpit');
+const camWheel = document.getElementById('cam-wheel');
+const cameraBtns = document.querySelectorAll('.camera-btn');
+
 const loaderContainer = document.getElementById('loader-container');
 const progressBar = document.getElementById('progress-bar');
 const loaderStatus = document.getElementById('loader-status');
@@ -67,6 +73,31 @@ let config = {
     autoRotate: false,
     driveMode: false
 };
+
+// Camera Presets definitions
+const cameraPresets = {
+    front: {
+        position: new THREE.Vector3(5.5, 2.0, 5.5),
+        target: new THREE.Vector3(0, 0.45, 0)
+    },
+    rear: {
+        position: new THREE.Vector3(-4.5, 2.5, -4.5),
+        target: new THREE.Vector3(0, 1.0, -1.5)
+    },
+    cockpit: {
+        position: new THREE.Vector3(0.5, 1.2, 0),
+        target: new THREE.Vector3(0.5, 1.2, 2)
+    },
+    wheel: {
+        position: new THREE.Vector3(3.0, 0.6, 2.5),
+        target: new THREE.Vector3(1.5, 0.4, 1.5)
+    }
+};
+
+let currentCameraPreset = null;
+let targetCameraPos = new THREE.Vector3();
+let targetControlsPos = new THREE.Vector3();
+let isAnimatingCamera = false;
 
 // Base positions of the spoiler for active aerodynamics animation
 let initialSpoilerY = null;
@@ -121,6 +152,18 @@ function init() {
 
     // 10. Start Animation Loop
     animate();
+}
+
+function tweenCamera(preset) {
+    targetCameraPos.copy(preset.position);
+    targetControlsPos.copy(preset.target);
+    isAnimatingCamera = true;
+
+    // Stop auto rotation and drive mode during manual camera selection
+    config.autoRotate = false;
+    btnSpin.classList.remove('highlight');
+    config.driveMode = false;
+    btnDrive.classList.remove('highlight');
 }
 
 function setupMaterials() {
@@ -662,10 +705,40 @@ function setupEventListeners() {
     // 8. Reset View
     btnReset.addEventListener('click', () => {
         controls.reset();
-        camera.position.set(5.5, 2.0, 5.5);
+        // Return to Front 3/4
+        tweenCamera(cameraPresets.front);
+        cameraBtns.forEach(b => b.classList.remove('active'));
+        if(camFront) camFront.classList.add('active');
         config.driveMode = false;
         btnDrive.classList.remove('highlight');
     });
+
+    // Camera Presets Events
+    if (camFront && camRear && camCockpit && camWheel) {
+        camFront.addEventListener('click', () => {
+            cameraBtns.forEach(b => b.classList.remove('active'));
+            camFront.classList.add('active');
+            tweenCamera(cameraPresets.front);
+        });
+
+        camRear.addEventListener('click', () => {
+            cameraBtns.forEach(b => b.classList.remove('active'));
+            camRear.classList.add('active');
+            tweenCamera(cameraPresets.rear);
+        });
+
+        camCockpit.addEventListener('click', () => {
+            cameraBtns.forEach(b => b.classList.remove('active'));
+            camCockpit.classList.add('active');
+            tweenCamera(cameraPresets.cockpit);
+        });
+
+        camWheel.addEventListener('click', () => {
+            cameraBtns.forEach(b => b.classList.remove('active'));
+            camWheel.classList.add('active');
+            tweenCamera(cameraPresets.wheel);
+        });
+    }
 
     // 9. Interactive Drive Mode (Spins wheels, shakes camera slightly)
     btnDrive.addEventListener('click', () => {
@@ -703,6 +776,21 @@ function animate() {
         spoiler.position.y += (targetY - spoiler.position.y) * 0.08;
         spoiler.position.z += (targetZ - spoiler.position.z) * 0.08;
         spoiler.rotation.x += (targetRotX - spoiler.rotation.x) * 0.08;
+    }
+
+    // Camera animation
+    if (isAnimatingCamera) {
+        camera.position.lerp(targetCameraPos, 0.05);
+        controls.target.lerp(targetControlsPos, 0.05);
+
+        // Stop animation when close enough
+        if (camera.position.distanceTo(targetCameraPos) < 0.05 &&
+            controls.target.distanceTo(targetControlsPos) < 0.05) {
+            isAnimatingCamera = false;
+            // Set exact position at end
+            camera.position.copy(targetCameraPos);
+            controls.target.copy(targetControlsPos);
+        }
     }
 
     // Auto camera rotation

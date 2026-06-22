@@ -231,6 +231,11 @@ body {
     grid-template-columns: 1fr 1fr 1fr;
 }
 
+.toggle-group.camera-presets {
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 4px;
+}
+
 .toggle-btn {
     background: transparent;
     border: none;
