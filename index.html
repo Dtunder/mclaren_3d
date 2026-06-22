@@ -174,12 +174,50 @@
                 <button class="action-btn" id="btn-spin"><i class="fa-solid fa-arrows-spin"></i> Auto-Rotation</button>
                 <button class="action-btn" id="btn-reset"><i class="fa-solid fa-camera"></i> Kamera zurücksetzen</button>
                 <button class="action-btn highlight" id="btn-drive"><i class="fa-solid fa-gauge"></i> Testfahrt-Modus</button>
+                <button class="action-btn" id="btn-crash-test" style="border-color: #ff003c; color: #ff003c;"><i class="fa-solid fa-car-burst"></i> Crash-Test</button>
             </div>
             <div class="instruction">
                 <p><i class="fa-solid fa-computer-mouse"></i> Ziehen zum Rotieren | Scrollen zum Zoomen | Rechtsklick zum Verschieben</p>
             </div>
         </footer>
     </main>
+
+    <!-- Telemetry HUD Overlay -->
+    <div id="telemetry-hud" class="telemetry-hud hidden">
+        <div class="hud-header">
+            <h3><i class="fa-solid fa-shield-halved"></i> IMPACT TELEMETRY</h3>
+            <span class="status-badge">ANALYSIS COMPLETE</span>
+        </div>
+        <div class="hud-grid">
+            <div class="hud-item">
+                <span class="hud-label">IMPACT SPEED</span>
+                <span class="hud-value">350 <span class="hud-unit">km/h</span></span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">DECELERATION TIME</span>
+                <span class="hud-value">0.12 <span class="hud-unit">s</span></span>
+            </div>
+            <div class="hud-item warning">
+                <span class="hud-label">PEAK G-FORCE</span>
+                <span class="hud-value">82.6 <span class="hud-unit">G</span></span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">ENERGY ABSORBED</span>
+                <span class="hud-value">6.6 <span class="hud-unit">MJ</span></span>
+            </div>
+            <div class="hud-item success">
+                <span class="hud-label">CELL INTEGRITY</span>
+                <span class="hud-value">100 <span class="hud-unit">%</span></span>
+            </div>
+            <div class="hud-item success">
+                <span class="hud-label">SURVIVAL PROBABILITY</span>
+                <span class="hud-value">99.8 <span class="hud-unit">%</span></span>
+            </div>
+        </div>
+        <div class="hud-footer">
+            <p>Carbon Fiber MonoCell structure intact. No cabin deformation detected.</p>
+        </div>
+    </div>
 
     <!-- Main Application Logic -->
     <script type="module" src="app.js"></script>
