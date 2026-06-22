@@ -227,6 +227,10 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
+.toggle-group.three-cols {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
 .toggle-btn {
     background: transparent;
     border: none;
@@ -238,6 +242,11 @@ body {
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
+}
+
+.toggle-group.three-cols .toggle-btn {
+    font-size: 0.7rem;
+    padding: 8px 0;
 }
 
 .toggle-btn:hover {
