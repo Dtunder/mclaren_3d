@@ -18,6 +18,11 @@ let wheels = [];
 let spoiler = null; // object.009_cb_0 (McLaren active wing)
 let mainCeilingLight, keyNeonCyanLight, rimNeonOrangeLight; // Showroom Lights
 
+let dashboardMesh = null;
+let dashboardCanvas = null;
+let dashboardContext = null;
+let dashboardTexture = null;
+
 // Materials configuration
 const materials = {
     body: null,
@@ -29,7 +34,8 @@ const materials = {
     taillight: null,
     chrome: null,
     carbon: null,
-    brakeDisc: null
+    brakeDisc: null,
+    dashboard: null
 };
 
 // UI Toggles & Controls
@@ -51,6 +57,9 @@ const lightsToggle = document.getElementById('lights-toggle');
 const btnSpin = document.getElementById('btn-spin');
 const btnReset = document.getElementById('btn-reset');
 const btnDrive = document.getElementById('btn-drive');
+const btnCockpit = document.getElementById('btn-cockpit');
+const dashboardControls = document.getElementById('dashboard-controls');
+const btnDashMode = document.getElementById('btn-dash-mode');
 
 const loaderContainer = document.getElementById('loader-container');
 const progressBar = document.getElementById('progress-bar');
@@ -65,8 +74,13 @@ let config = {
     spoilerActive: true,
     lightsActive: true,
     autoRotate: false,
-    driveMode: false
+    driveMode: false,
+    cockpitView: false,
+    trackMode: false
 };
+
+let currentSpeed = 0;
+let currentRpm = 0;
 
 // Base positions of the spoiler for active aerodynamics animation
 let initialSpoilerY = null;
@@ -201,6 +215,118 @@ function setupMaterials() {
         metalness: 0.9,
         envMapIntensity: 1.5
     });
+
+    // Create offscreen canvas for dashboard
+    dashboardCanvas = document.createElement('canvas');
+    dashboardCanvas.width = 512;
+    dashboardCanvas.height = 256;
+    dashboardContext = dashboardCanvas.getContext('2d');
+
+    // Initial draw
+    drawDashboard(0, 0, false);
+
+    dashboardTexture = new THREE.CanvasTexture(dashboardCanvas);
+    dashboardTexture.colorSpace = THREE.SRGBColorSpace;
+    dashboardTexture.minFilter = THREE.LinearFilter;
+    dashboardTexture.magFilter = THREE.LinearFilter;
+
+    materials.dashboard = new THREE.MeshBasicMaterial({
+        map: dashboardTexture,
+        side: THREE.DoubleSide
+    });
+}
+
+function drawDashboard(speed, rpmPercent, trackMode) {
+    const ctx = dashboardContext;
+    const w = dashboardCanvas.width;
+    const h = dashboardCanvas.height;
+
+    // Clear background
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.save();
+    // Use scale and translate to flip horizontally and vertically because the UV mapping is inverted
+    ctx.translate(w, h);
+    ctx.scale(-1, -1);
+
+    if (trackMode) {
+        // Track Telemetry Mode
+        ctx.fillStyle = '#ff003c';
+        ctx.font = 'bold 36px "Courier New", Courier, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('RACE MODE', 20, 40);
+
+        ctx.fillStyle = '#00ffff';
+        ctx.font = '24px "Courier New", Courier, monospace';
+        ctx.fillText(`GEAR: ${speed > 0 ? Math.ceil(speed / 50) : 'N'}`, 20, 80);
+        ctx.fillText(`LAP: 01:24.3`, 20, 110);
+
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = '24px "Courier New", Courier, monospace';
+        ctx.fillText('G-FORCE', 380, 80);
+        ctx.beginPath();
+        ctx.arc(420, 140, 40, 0, Math.PI * 2);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // G-force dot
+        ctx.beginPath();
+        ctx.arc(420 + Math.sin(Date.now() * 0.005) * 15, 140 + Math.cos(Date.now() * 0.003) * 15, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffaa00';
+        ctx.fill();
+
+        // RPM Bar
+        ctx.fillStyle = '#333';
+        ctx.fillRect(20, h - 40, w - 40, 20);
+        ctx.fillStyle = '#ff003c';
+        ctx.fillRect(20, h - 40, (w - 40) * rpmPercent, 20);
+
+        // Speed
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 80px "Courier New", Courier, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${Math.floor(speed)}`, w/2, h/2 + 30);
+        ctx.font = '20px "Courier New", Courier, monospace';
+        ctx.fillText('KM/H', w/2, h/2 + 60);
+
+    } else {
+        // Standard Mode
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '30px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('COMFORT', 20, 40);
+
+        // RPM Arc
+        ctx.beginPath();
+        ctx.arc(w/2, h/2 + 20, 80, Math.PI, 0);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 15;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(w/2, h/2 + 20, 80, Math.PI, Math.PI + (Math.PI * rpmPercent));
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 15;
+        ctx.stroke();
+
+        // Speed
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 60px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${Math.floor(speed)}`, w/2, h/2 + 10);
+        ctx.font = '20px Arial';
+        ctx.fillText('km/h', w/2, h/2 + 35);
+
+        // Battery/Fuel
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(w - 60, h - 60, 40, 20);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '14px Arial';
+        ctx.fillText('EV', w - 40, h - 25);
+    }
+    ctx.restore();
 }
 
 function createEnvironment() {
@@ -350,6 +476,11 @@ function loadModel() {
                     // Apply chrome exhaust trim
                     else if (name.includes('_chrome_')) {
                         child.material = materials.chrome;
+                    }
+                    // Apply dashboard texture
+                    else if (name.includes('_guage_') || name.includes('guage')) {
+                        dashboardMesh = child;
+                        child.material = materials.dashboard;
                     }
                 }
                 
@@ -662,9 +793,16 @@ function setupEventListeners() {
     // 8. Reset View
     btnReset.addEventListener('click', () => {
         controls.reset();
+        controls.minDistance = 3.5;
+        controls.maxDistance = 14;
+        controls.target.set(0, 0, 0);
         camera.position.set(5.5, 2.0, 5.5);
+
         config.driveMode = false;
+        config.cockpitView = false;
         btnDrive.classList.remove('highlight');
+        btnCockpit.classList.remove('highlight');
+        dashboardControls.style.display = 'none';
     });
 
     // 9. Interactive Drive Mode (Spins wheels, shakes camera slightly)
@@ -676,6 +814,54 @@ function setupEventListeners() {
             btnSpin.classList.remove('highlight');
         }
     });
+
+    // 10. Cockpit View
+    if (btnCockpit) {
+        btnCockpit.addEventListener('click', () => {
+            config.cockpitView = !config.cockpitView;
+            btnCockpit.classList.toggle('highlight', config.cockpitView);
+
+            if (config.cockpitView) {
+                config.autoRotate = false;
+                btnSpin.classList.remove('highlight');
+
+                // Set target to look forward at the dashboard/windshield
+                // The controls calculate distance from target to camera.
+                const targetPos = new THREE.Vector3(0.35, 0.75, -1.0);
+                controls.target.copy(targetPos);
+
+                // Position camera inside cockpit
+                const cockpitPos = new THREE.Vector3(0.35, 0.85, -0.15);
+                camera.position.copy(cockpitPos);
+
+                // Allow looking around from a fixed spot. Set min and max distance to the actual distance
+                // between camera and target to avoid snapping.
+                const distance = cockpitPos.distanceTo(targetPos);
+                controls.minDistance = distance;
+                controls.maxDistance = distance;
+
+                dashboardControls.style.display = 'flex';
+            } else {
+                // Exit cockpit view
+                controls.minDistance = 3.5;
+                controls.maxDistance = 14;
+                controls.target.set(0, 0, 0);
+                camera.position.set(5.5, 2.0, 5.5);
+
+                dashboardControls.style.display = 'none';
+            }
+        });
+    }
+
+    if (btnDashMode) {
+        btnDashMode.addEventListener('click', () => {
+            config.trackMode = !config.trackMode;
+            if (dashboardTexture) {
+                drawDashboard(currentSpeed, currentRpm, config.trackMode);
+                dashboardTexture.needsUpdate = true;
+            }
+        });
+    }
 
     window.addEventListener('resize', onWindowResize);
 }
@@ -721,11 +907,34 @@ function animate() {
             wheel.rotation.y += 0.25;
         });
 
-        // Simulates dynamic driving camera track
-        camera.position.x = Math.sin(time * 0.4) * 6.8;
-        camera.position.z = Math.cos(time * 0.4) * 6.8;
-        camera.position.y = 1.5 + Math.sin(time * 2.5) * 0.04; // High-frequency road vibration
-        controls.target.set(0, 0.45 + Math.sin(time * 1.8) * 0.01, 0);
+        // Simulates dynamic driving camera track (only if not in cockpit)
+        if (!config.cockpitView) {
+            camera.position.x = Math.sin(time * 0.4) * 6.8;
+            camera.position.z = Math.cos(time * 0.4) * 6.8;
+            camera.position.y = 1.5 + Math.sin(time * 2.5) * 0.04; // High-frequency road vibration
+            controls.target.set(0, 0.45 + Math.sin(time * 1.8) * 0.01, 0);
+        }
+        // Do not alter camera position or target if in cockpit view, to avoid fighting OrbitControls.
+
+        // Update dashboard metrics
+        currentSpeed = Math.min(350, currentSpeed + 0.5 + Math.random());
+        // Simple RPM simulation
+        currentRpm = (currentSpeed % 50) / 50;
+
+        if (dashboardTexture) {
+            drawDashboard(currentSpeed, currentRpm, config.trackMode);
+            dashboardTexture.needsUpdate = true;
+        }
+
+    } else {
+        if (currentSpeed > 0) {
+            currentSpeed = Math.max(0, currentSpeed - 1.0);
+            currentRpm = (currentSpeed % 50) / 50;
+            if (dashboardTexture) {
+                drawDashboard(currentSpeed, currentRpm, config.trackMode);
+                dashboardTexture.needsUpdate = true;
+            }
+        }
     }
 
     renderer.render(scene, camera);
