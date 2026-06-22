@@ -38,6 +38,18 @@
 
     <!-- UI Overlay -->
     <main class="ui-container">
+        <!-- HUD Telemetry (Hidden by default, shown in Drive Mode) -->
+        <div id="hud-telemetry" class="hud-telemetry" style="display: none;">
+            <div class="hud-item">
+                <span id="hud-rpm" class="hud-val">800</span>
+                <span class="hud-lbl">RPM</span>
+            </div>
+            <div class="hud-item">
+                <span id="hud-boost" class="hud-val">0.0</span>
+                <span class="hud-lbl">BOOST (BAR)</span>
+            </div>
+        </div>
+
         <!-- Header -->
         <header class="header">
             <div class="brand">

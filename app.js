@@ -17,6 +17,7 @@ let headlights = [], taillights = [];
 let wheels = [];
 let spoiler = null; // object.009_cb_0 (McLaren active wing)
 let mainCeilingLight, keyNeonCyanLight, rimNeonOrangeLight; // Showroom Lights
+let flameSystem; // Exhaust flame particles
 
 // Materials configuration
 const materials = {
@@ -68,6 +69,10 @@ let config = {
     driveMode: false
 };
 
+// Telemetry & Engine State
+let virtualRPM = 800;
+let turboBoost = 0.0;
+
 // Base positions of the spoiler for active aerodynamics animation
 let initialSpoilerY = null;
 let initialSpoilerZ = null;
@@ -116,11 +121,67 @@ function init() {
     // 8. Load McLaren P1 GLB Model
     loadModel();
 
-    // 9. Attach Event Listeners
+    // 9. Setup Exhaust Particle System
+    setupExhaustParticles();
+
+    // 10. Attach Event Listeners
     setupEventListeners();
 
-    // 10. Start Animation Loop
+    // 11. Start Animation Loop
     animate();
+}
+
+function setupExhaustParticles() {
+    const particleCount = 150;
+    const flameParticles = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = [];
+    const lifetimes = new Float32Array(particleCount);
+
+    for (let i = 0; i < particleCount; i++) {
+        positions[i * 3] = 0;
+        positions[i * 3 + 1] = 0;
+        positions[i * 3 + 2] = 0;
+
+        velocities.push({
+            x: (Math.random() - 0.5) * 0.1,
+            y: (Math.random() - 0.5) * 0.1,
+            z: Math.random() * 0.4 + 0.2
+        });
+
+        lifetimes[i] = Math.random();
+    }
+
+    flameParticles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    flameParticles.setAttribute('lifetime', new THREE.BufferAttribute(lifetimes, 1));
+
+    const textureLoader = new THREE.TextureLoader();
+    // Use a soft, round particle (simulated by radial gradient if no texture, but we'll just use points)
+
+    const flameMaterial = new THREE.PointsMaterial({
+        color: 0xffaa00,
+        size: 0.15,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+
+    flameSystem = new THREE.Points(flameParticles, flameMaterial);
+
+    // Position roughly at the center rear exhaust of McLaren P1
+    // The exact position depends on the scaled model. Let's start with a reasonable guess
+    // since the model was scaled to length 4.5 and centered.
+    flameSystem.position.set(0, 0.75, 2.25);
+
+    // Attach custom data to system for animation
+    flameSystem.userData = {
+        velocities: velocities,
+        lifetimes: lifetimes,
+        particleCount: particleCount
+    };
+
+    scene.add(flameSystem);
 }
 
 function setupMaterials() {
@@ -713,12 +774,78 @@ function animate() {
         controls.autoRotate = false;
     }
 
+    // Update Exhaust Particles
+    if (flameSystem) {
+        const positions = flameSystem.geometry.attributes.position.array;
+        const lifetimes = flameSystem.userData.lifetimes;
+        const velocities = flameSystem.userData.velocities;
+
+        let flameIntensity = 0;
+        if (config.driveMode && virtualRPM > 3000) {
+            // Intensity based on RPM and Boost
+            flameIntensity = Math.min(1.0, ((virtualRPM - 3000) / 5000) + (turboBoost * 0.2));
+        }
+
+        // Update opacity and color based on intensity
+        flameSystem.material.opacity = flameIntensity * 0.8;
+
+        // Color transition: blue -> orange -> yellow based on intensity
+        if (flameIntensity > 0.8) {
+            flameSystem.material.color.setHex(0xffff00); // Yellow/White
+        } else if (flameIntensity > 0.4) {
+            flameSystem.material.color.setHex(0xff5a00); // Orange
+        } else {
+            flameSystem.material.color.setHex(0x0055ff); // Blue flame for low revs
+        }
+
+        // Update positions
+        for (let i = 0; i < flameSystem.userData.particleCount; i++) {
+            lifetimes[i] += 0.05;
+
+            if (lifetimes[i] >= 1.0) {
+                // Reset particle to exhaust origin
+                lifetimes[i] = 0;
+                positions[i * 3] = (Math.random() - 0.5) * 0.05;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 0.05;
+                positions[i * 3 + 2] = 0;
+            } else {
+                // Move particle backwards and outwards
+                const spread = lifetimes[i] * 2.0;
+                positions[i * 3] += velocities[i].x * flameIntensity * spread;
+                positions[i * 3 + 1] += velocities[i].y * flameIntensity * spread;
+                positions[i * 3 + 2] += velocities[i].z * flameIntensity * 2.0;
+            }
+        }
+        flameSystem.geometry.attributes.position.needsUpdate = true;
+    }
+
     // Interactive drive mode
     if (config.driveMode) {
+        // Engine RPM Simulation
+        const cycle = (time % 4) / 4; // 4 second gear cycle
+        let targetRPM = 800;
+        if (cycle < 0.3) {
+            targetRPM = 8000;
+        } else if (cycle < 0.6) {
+            targetRPM = 6000;
+        } else {
+            targetRPM = 3000;
+        }
+        virtualRPM += (targetRPM - virtualRPM) * 0.05;
+
+        // Turbo Boost Simulation (peaks near max RPM)
+        turboBoost = Math.max(0, (virtualRPM - 3000) / 5000 * 2.2);
+
+        // Update HUD
+        document.getElementById('hud-telemetry').style.display = 'flex';
+        document.getElementById('hud-rpm').innerText = Math.round(virtualRPM);
+        document.getElementById('hud-boost').innerText = turboBoost.toFixed(1);
+
         // Spin wheels
+        const wheelSpeed = 0.1 + (virtualRPM / 8000) * 0.4;
         wheels.forEach(wheel => {
             // Rotates wheels around their local rotation axis (which is local Y after importing)
-            wheel.rotation.y += 0.25;
+            wheel.rotation.y += wheelSpeed;
         });
 
         // Simulates dynamic driving camera track
@@ -726,6 +853,10 @@ function animate() {
         camera.position.z = Math.cos(time * 0.4) * 6.8;
         camera.position.y = 1.5 + Math.sin(time * 2.5) * 0.04; // High-frequency road vibration
         controls.target.set(0, 0.45 + Math.sin(time * 1.8) * 0.01, 0);
+    } else {
+        virtualRPM += (800 - virtualRPM) * 0.05;
+        turboBoost = 0.0;
+        document.getElementById('hud-telemetry').style.display = 'none';
     }
 
     renderer.render(scene, camera);
