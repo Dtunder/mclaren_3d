@@ -144,6 +144,37 @@
                     <span>Aktiver Heckspoiler</span>
                 </div>
             </div>
+
+            <!-- Tire Simulator -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-road"></i> Reifensimulation</h3>
+                <div class="toggle-group" style="margin-bottom: 12px;">
+                    <button class="toggle-btn active" id="tire-corsa">P Zero Corsa</button>
+                    <button class="toggle-btn" id="tire-trofeo">Trofeo R</button>
+                </div>
+
+                <div class="slider-container" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 12px;">
+                    <div class="slider-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="slider-pressure">Reifendruck (<span id="pressure-val">2.2</span> bar)</label>
+                        <input type="range" id="slider-pressure" min="1.5" max="3.5" step="0.1" value="2.2" style="width: 50%; accent-color: var(--brand-orange);">
+                    </div>
+                </div>
+
+                <div class="telemetry-hud" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                        <span style="color: var(--text-secondary);"><i class="fa-solid fa-compress"></i> Lateral G-Force:</span>
+                        <span id="hud-gforce" style="font-weight: 600; color: var(--text-primary);">1.20 G</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                        <span style="color: var(--text-secondary);"><i class="fa-solid fa-temperature-half"></i> Temperatur:</span>
+                        <span id="hud-temp" style="font-weight: 600; color: var(--text-primary);">65.0 °C</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                        <span style="color: var(--text-secondary);"><i class="fa-solid fa-chart-line"></i> Verschleiss:</span>
+                        <span id="hud-wear" style="font-weight: 600; color: var(--text-primary);">0.01 %/km</span>
+                    </div>
+                </div>
+            </div>
             
             <!-- Showroom Lighting Presets -->
             <div class="control-group">
