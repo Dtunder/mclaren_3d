@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>McLaren 3D Concept Configurator</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loader-container">
+        <div class="loader-content">
+            <span class="loader-brand">MCLAREN P1</span>
+            <div class="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+            <span id="loader-status">Lädt 3D-Ressourcen... 0%</span>
+        </div>
+    </div>
+
+    <!-- Canvas for Three.js -->
+    <canvas id="webgl"></canvas>
+
+    <!-- UI Overlay -->
+    <main class="ui-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="brand">
+                <span class="logo-text">MCLAREN</span>
+                <span class="model-badge">P1 HYBRID COUPE</span>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-val">3.8L V8</span>
+                    <span class="stat-lbl">Twin-Turbo Hybrid</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-val">916 PS</span>
+                    <span class="stat-lbl">Combined Power</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-val">350 km/h</span>
+                    <span class="stat-lbl">Top Speed</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Configuration Sidebar -->
+        <section class="config-panel">
+            <div class="panel-header">
+                <h2>DESIGN STUDIO</h2>
+                <p>Gestalte deinen individuellen Supersportwagen</p>
+            </div>
+
+            <!-- Body Color Selector -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-palette"></i> Aussenfarbe</h3>
+                <div class="color-options">
+                    <button class="color-btn active" data-color="#ff5a00" data-roughness="0.15" data-metalness="0.9" style="background: linear-gradient(135deg, #ff8c00, #ff4500);" title="McLaren Orange"></button>
+                    <button class="color-btn" data-color="#0b24fb" data-roughness="0.15" data-metalness="0.8" style="background: linear-gradient(135deg, #00bfff, #0000ff);" title="Aurora Blue"></button>
+                    <button class="color-btn" data-color="#050505" data-roughness="0.1" data-metalness="0.95" style="background: linear-gradient(135deg, #444, #050505);" title="Onyx Black"></button>
+                    <button class="color-btn" data-color="#e6e6e6" data-roughness="0.05" data-metalness="0.95" style="background: linear-gradient(135deg, #fff, #b3b3b3);" title="Silica White"></button>
+                    <button class="color-btn" data-color="#0df824" data-roughness="0.15" data-metalness="0.85" style="background: linear-gradient(135deg, #39ff14, #00a86b);" title="Mantis Grün"></button>
+                    <button class="color-btn" data-color="#800080" data-roughness="0.1" data-metalness="0.9" style="background: linear-gradient(135deg, #da70d6, #800080);" title="Lantana Purple"></button>
+                </div>
+            </div>
+
+            <!-- Finish Options -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Lack-Finish</h3>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" id="finish-metallic">Metallic</button>
+                    <button class="toggle-btn" id="finish-matte">Matt</button>
+                </div>
+            </div>
+
+            <!-- Wheel/Rim Selector -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-circle-notch"></i> Felgen-Finish</h3>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" id="rim-sport">Stealth Black</button>
+                    <button class="toggle-btn" id="rim-aero">Chrome Alloy</button>
+                </div>
+            </div>
+
+            <!-- Caliper Colors -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-gauge-high"></i> Bremssättel</h3>
+                <div class="color-options small">
+                    <button class="caliper-btn active" data-color="#ffcc00" style="background-color: #ffcc00;" title="Gelb"></button>
+                    <button class="caliper-btn" data-color="#ff0000" style="background-color: #ff0000;" title="Rot"></button>
+                    <button class="caliper-btn" data-color="#00ffff" style="background-color: #00ffff;" title="Cyan"></button>
+                    <button class="caliper-btn" data-color="#ffffff" style="background-color: #ffffff;" title="Silber"></button>
+                </div>
+            </div>
+
+            <!-- Spoiler Option -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-wind"></i> Aerodynamik</h3>
+                <div class="checkbox-container">
+                    <label class="switch">
+                        <input type="checkbox" id="spoiler-toggle" checked>
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Aktiver Heckspoiler</span>
+                </div>
+            </div>
+            
+            <!-- Light Toggle -->
+            <div class="control-group">
+                <h3><i class="fa-regular fa-lightbulb"></i> Beleuchtung</h3>
+                <div class="checkbox-container">
+                    <label class="switch">
+                        <input type="checkbox" id="lights-toggle" checked>
+                        <span class="slider round"></span>
+                    </label>
+                    <span>LED-Scheinwerfer aktiv</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Controls / Interactions -->
+        <footer class="bottom-controls">
+            <div class="interaction-card">
+                <button class="action-btn" id="btn-spin"><i class="fa-solid fa-arrows-spin"></i> Auto-Rotation</button>
+                <button class="action-btn" id="btn-reset"><i class="fa-solid fa-camera"></i> Kamera zurücksetzen</button>
+                <button class="action-btn highlight" id="btn-drive"><i class="fa-solid fa-gauge"></i> Testfahrt-Modus</button>
+            </div>
+            <div class="instruction">
+                <p><i class="fa-solid fa-computer-mouse"></i> Ziehen zum Rotieren | Scrollen zum Zoomen | Rechtsklick zum Verschieben</p>
+            </div>
+        </footer>
+    </main>
+
+    <!-- Three.js, OrbitControls, and GLTFLoader CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Main Application Logic -->
+    <script src="app.js"></script>pt>
+</body>
+</html>
