@@ -145,6 +145,20 @@
                 </div>
             </div>
             
+            <!-- Active Suspension -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-car-burst"></i> Aktives Fahrwerk</h3>
+                <div class="toggle-group three-cols">
+                    <button class="toggle-btn" id="susp-comfort">Comfort</button>
+                    <button class="toggle-btn active" id="susp-sport">Sport</button>
+                    <button class="toggle-btn" id="susp-race">Race</button>
+                </div>
+                <div class="telemetry-display" style="margin-top: 12px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between;">
+                    <div><span style="color: var(--text-secondary);">Stiffness:</span> <span id="telemetry-stiffness" style="color: var(--brand-orange); font-weight: 600;">85 kN/m</span></div>
+                    <div><span style="color: var(--text-secondary);">Nat. Freq:</span> <span id="telemetry-freq" style="color: var(--brand-orange); font-weight: 600;">1.8 Hz</span></div>
+                </div>
+            </div>
+
             <!-- Showroom Lighting Presets -->
             <div class="control-group">
                 <h3><i class="fa-solid fa-lightbulb"></i> Beleuchtung-Presets</h3>

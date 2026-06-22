@@ -44,6 +44,11 @@ const rimSport = document.getElementById('rim-sport');
 const rimAero = document.getElementById('rim-aero');
 const caliperButtons = document.querySelectorAll('.caliper-btn');
 const spoilerToggle = document.getElementById('spoiler-toggle');
+const suspComfort = document.getElementById('susp-comfort');
+const suspSport = document.getElementById('susp-sport');
+const suspRace = document.getElementById('susp-race');
+const telemetryStiffness = document.getElementById('telemetry-stiffness');
+const telemetryFreq = document.getElementById('telemetry-freq');
 const lightNeonBtn = document.getElementById('light-neon');
 const lightStudioBtn = document.getElementById('light-studio');
 const lightSunsetBtn = document.getElementById('light-sunset');
@@ -63,10 +68,19 @@ let config = {
     rimFinish: 'stealth', // stealth vs chrome
     caliperColor: '#ffcc00',
     spoilerActive: true,
+    suspensionMode: 'sport', // comfort, sport, race
     lightsActive: true,
     autoRotate: false,
     driveMode: false
 };
+
+// Suspension Parameters
+const suspensionParams = {
+    comfort: { offset: 0.04, stiffness: '45 kN/m', freq: '1.2 Hz', amplitude: 0.05, damping: 0.03 },
+    sport: { offset: 0.00, stiffness: '85 kN/m', freq: '1.8 Hz', amplitude: 0.02, damping: 0.08 },
+    race: { offset: -0.04, stiffness: '140 kN/m', freq: '2.5 Hz', amplitude: 0.005, damping: 0.15 }
+};
+let currentSuspensionOffset = suspensionParams.sport.offset;
 
 // Base positions of the spoiler for active aerodynamics animation
 let initialSpoilerY = null;
@@ -290,6 +304,7 @@ function loadModel() {
             
             // Center the model in X and Z, and place the lowest point on the floor (Y = 0)
             carModel.position.set(-center.x * scaleFactor, -scaledMinY, -center.z * scaleFactor);
+            carModel.userData.baseY = carModel.position.y;
             
             // Traverse model nodes and assign materials matching P1 structure
             carModel.traverse((child) => {
@@ -356,6 +371,8 @@ function loadModel() {
                 // Track wheels for rotation physics
                 if (child.name.toLowerCase().startsWith('wheel') && !child.name.includes('_')) {
                     wheels.push(child);
+                    // Store the original local position
+                    child.userData.baseLocalPos = child.position.clone();
                 }
             });
 
@@ -503,6 +520,7 @@ function setupEventListeners() {
                     
                     // Center the model in X and Z, and place the lowest point on the floor (Y = 0)
                     carModelObj.position.set(-center.x * scaleFactor, -scaledMinY, -center.z * scaleFactor);
+                    carModelObj.userData.baseY = carModelObj.position.y;
 
                     // Apply materials (simple approach: apply body material to all meshes)
                     carModelObj.traverse((child) => {
@@ -510,6 +528,10 @@ function setupEventListeners() {
                             child.castShadow = true;
                             child.receiveShadow = true;
                             child.material = materials.body;
+                        }
+                        if (child.name.toLowerCase().startsWith('wheel') && !child.name.includes('_')) {
+                            wheels.push(child);
+                            child.userData.baseLocalPos = child.position.clone();
                         }
                     });
 
@@ -636,7 +658,22 @@ function setupEventListeners() {
         });
     });
 
-    // 5. Active Spoiler active aerodynamic height toggle
+    // 5. Active Suspension handling
+    function updateSuspension(mode) {
+        config.suspensionMode = mode;
+        suspComfort.classList.toggle('active', mode === 'comfort');
+        suspSport.classList.toggle('active', mode === 'sport');
+        suspRace.classList.toggle('active', mode === 'race');
+
+        telemetryStiffness.innerText = suspensionParams[mode].stiffness;
+        telemetryFreq.innerText = suspensionParams[mode].freq;
+    }
+
+    suspComfort.addEventListener('click', () => updateSuspension('comfort'));
+    suspSport.addEventListener('click', () => updateSuspension('sport'));
+    suspRace.addEventListener('click', () => updateSuspension('race'));
+
+    // 5.5 Active Spoiler active aerodynamic height toggle
     spoilerToggle.addEventListener('change', (e) => {
         config.spoilerActive = e.target.checked;
     });
@@ -703,6 +740,44 @@ function animate() {
         spoiler.position.y += (targetY - spoiler.position.y) * 0.08;
         spoiler.position.z += (targetZ - spoiler.position.z) * 0.08;
         spoiler.rotation.x += (targetRotX - spoiler.rotation.x) * 0.08;
+    }
+
+    // Active Suspension Interpolation & Animation
+    if (carModel && carModel.userData.baseY !== undefined) {
+        const targetParams = suspensionParams[config.suspensionMode];
+
+        // Smoothly interpolate current offset towards target offset
+        currentSuspensionOffset += (targetParams.offset - currentSuspensionOffset) * targetParams.damping;
+
+        // Dynamic damper compression (bounce) when in drive mode
+        let damperCompression = 0;
+        if (config.driveMode) {
+            damperCompression = Math.sin(time * 15.0) * targetParams.amplitude;
+        }
+
+        // Apply offset and compression to car body
+        const totalOffset = currentSuspensionOffset + damperCompression;
+        carModel.position.y = carModel.userData.baseY + totalOffset;
+
+        // Inverse the offset for wheels so they stay on the ground
+        wheels.forEach(wheel => {
+            if (wheel.userData.baseLocalPos) {
+                // start with base local position
+                const pos = wheel.userData.baseLocalPos.clone();
+
+                // convert to current world position (which includes the parent's totalOffset)
+                wheel.parent.localToWorld(pos);
+
+                // move back down in world space by totalOffset
+                pos.y -= totalOffset;
+
+                // convert back to local space
+                wheel.parent.worldToLocal(pos);
+
+                // apply new local position
+                wheel.position.copy(pos);
+            }
+        });
     }
 
     // Auto camera rotation
