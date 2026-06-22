@@ -52,6 +52,24 @@ const btnSpin = document.getElementById('btn-spin');
 const btnReset = document.getElementById('btn-reset');
 const btnDrive = document.getElementById('btn-drive');
 
+// Performance Tuning UI
+const tireStreetBtn = document.getElementById('tire-street');
+const tireSportBtn = document.getElementById('tire-sport');
+const tireTrackBtn = document.getElementById('tire-track');
+
+const sliderSuspension = document.getElementById('slider-suspension');
+const valSuspension = document.getElementById('val-suspension');
+
+const sliderWing = document.getElementById('slider-wing');
+const valWing = document.getElementById('val-wing');
+
+const sliderWeight = document.getElementById('slider-weight');
+const valWeight = document.getElementById('val-weight');
+
+// Lap Time UI
+const timeNurburgring = document.getElementById('time-nurburgring');
+const timeSpa = document.getElementById('time-spa');
+
 const loaderContainer = document.getElementById('loader-container');
 const progressBar = document.getElementById('progress-bar');
 const loaderStatus = document.getElementById('loader-status');
@@ -65,12 +83,89 @@ let config = {
     spoilerActive: true,
     lightsActive: true,
     autoRotate: false,
-    driveMode: false
+    driveMode: false,
+
+    // Performance parameters
+    tireCompound: 'street', // street, sport, track
+    suspensionStiffness: 5, // 1-10
+    wingAngle: 5, // 0-15 degrees
+    weightReduction: 0 // 0-200 kg
 };
 
 // Base positions of the spoiler for active aerodynamics animation
 let initialSpoilerY = null;
 let initialSpoilerZ = null;
+
+function formatTime(seconds) {
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 100);
+    return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+}
+
+function updateLapTimes() {
+    // Base times in seconds for stock P1
+    let timeNurburgringSec = 415.2; // 6:55.20
+    let timeSpaSec = 138.4; // 2:18.40
+
+    // 1. Tire compound effect
+    if (config.tireCompound === 'sport') {
+        timeNurburgringSec -= 8.5;
+        timeSpaSec -= 2.8;
+    } else if (config.tireCompound === 'track') {
+        timeNurburgringSec -= 18.0;
+        timeSpaSec -= 6.0;
+    }
+
+    // 2. Suspension stiffness effect
+    // 5 is baseline. Stiffer is better up to a point, then too stiff degrades handling on bumpy Nurburgring
+    const stiffnessDiff = config.suspensionStiffness - 5;
+    if (stiffnessDiff > 0) {
+        timeSpaSec -= stiffnessDiff * 0.4; // Smooth track: always benefits from stiffness
+        // Nurburgring: benefits up to 8, degrades past 8
+        if (config.suspensionStiffness <= 8) {
+            timeNurburgringSec -= stiffnessDiff * 1.0;
+        } else {
+            timeNurburgringSec -= (3 * 1.0) - ((config.suspensionStiffness - 8) * 1.5);
+        }
+    } else if (stiffnessDiff < 0) {
+        // Softer suspension adds time
+        timeSpaSec -= stiffnessDiff * 0.5; // Double negative = positive
+        timeNurburgringSec -= stiffnessDiff * 1.2;
+    }
+
+    // 3. Wing angle effect (Downforce vs Drag)
+    // Spa: high speed, needs less drag
+    // Nurburgring: mix, but downforce generally helps more
+    const wingDiff = config.wingAngle - 5;
+
+    // Spa: high wing angle hurts top speed, helps slightly in corners. Net effect usually negative for high angles.
+    if (wingDiff > 0) {
+        timeSpaSec += wingDiff * 0.2; // More drag = slower lap at Spa
+        timeNurburgringSec -= wingDiff * 0.8; // More downforce = faster lap at Nurburgring up to a point
+        // Diminishing returns on Nurburgring for very high wing angles
+        if (config.wingAngle > 12) {
+             timeNurburgringSec += (config.wingAngle - 12) * 1.5; // Too much drag
+        }
+    } else if (wingDiff < 0) {
+        timeSpaSec += wingDiff * 0.3; // Less drag = slightly faster at Spa (negative diff * 0.3 means faster)
+        timeNurburgringSec -= wingDiff * 1.5; // Less downforce = significantly slower at Nurburgring
+    }
+
+    // Wing not active? Significant time penalty
+    if (!config.spoilerActive) {
+         timeNurburgringSec += 15.0;
+         timeSpaSec += 5.0;
+    }
+
+    // 4. Weight reduction effect (10kg = ~0.3s Spa, ~0.9s Nurburgring)
+    timeNurburgringSec -= (config.weightReduction / 10) * 0.9;
+    timeSpaSec -= (config.weightReduction / 10) * 0.3;
+
+    // Update DOM
+    if (timeNurburgring) timeNurburgring.innerText = formatTime(timeNurburgringSec);
+    if (timeSpa) timeSpa.innerText = formatTime(timeSpaSec);
+}
 
 function init() {
     // 1. Create Scene
@@ -639,7 +734,57 @@ function setupEventListeners() {
     // 5. Active Spoiler active aerodynamic height toggle
     spoilerToggle.addEventListener('change', (e) => {
         config.spoilerActive = e.target.checked;
+        updateLapTimes();
     });
+
+    // Performance Tuning Event Listeners
+    if (tireStreetBtn && tireSportBtn && tireTrackBtn) {
+        tireStreetBtn.addEventListener('click', () => {
+            tireStreetBtn.classList.add('active');
+            tireSportBtn.classList.remove('active');
+            tireTrackBtn.classList.remove('active');
+            config.tireCompound = 'street';
+            updateLapTimes();
+        });
+        tireSportBtn.addEventListener('click', () => {
+            tireSportBtn.classList.add('active');
+            tireStreetBtn.classList.remove('active');
+            tireTrackBtn.classList.remove('active');
+            config.tireCompound = 'sport';
+            updateLapTimes();
+        });
+        tireTrackBtn.addEventListener('click', () => {
+            tireTrackBtn.classList.add('active');
+            tireStreetBtn.classList.remove('active');
+            tireSportBtn.classList.remove('active');
+            config.tireCompound = 'track';
+            updateLapTimes();
+        });
+    }
+
+    if (sliderSuspension && valSuspension) {
+        sliderSuspension.addEventListener('input', (e) => {
+            config.suspensionStiffness = parseInt(e.target.value);
+            valSuspension.innerText = config.suspensionStiffness;
+            updateLapTimes();
+        });
+    }
+
+    if (sliderWing && valWing) {
+        sliderWing.addEventListener('input', (e) => {
+            config.wingAngle = parseInt(e.target.value);
+            valWing.innerText = config.wingAngle;
+            updateLapTimes();
+        });
+    }
+
+    if (sliderWeight && valWeight) {
+        sliderWeight.addEventListener('input', (e) => {
+            config.weightReduction = parseInt(e.target.value);
+            valWeight.innerText = config.weightReduction;
+            updateLapTimes();
+        });
+    }
 
     // 6. Xenon and tail lights toggle
     lightsToggle.addEventListener('change', (e) => {
@@ -693,12 +838,15 @@ function animate() {
 
     const time = Date.now() * 0.001;
 
-    // Active Spoiler Animation (Lifts up and tilts down)
+    // Active Spoiler Animation (Lifts up and tilts down based on wing angle)
     if (spoiler && initialSpoilerY !== null) {
         // High Speed Aerodynamic position: lifts Y and pushes Z slightly back
         const targetY = config.spoilerActive ? initialSpoilerY + 0.15 : initialSpoilerY;
         const targetZ = config.spoilerActive ? initialSpoilerZ + 0.08 : initialSpoilerZ;
-        const targetRotX = config.spoilerActive ? -0.18 : 0.0;
+
+        // Base active rotation is -0.18. We add up to -0.15 more based on wingAngle (0-15)
+        const wingAngleRad = (config.wingAngle / 15) * -0.15;
+        const targetRotX = config.spoilerActive ? -0.18 + wingAngleRad : 0.0;
 
         spoiler.position.y += (targetY - spoiler.position.y) * 0.08;
         spoiler.position.z += (targetZ - spoiler.position.z) * 0.08;

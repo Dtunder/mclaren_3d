@@ -144,6 +144,50 @@
                     <span>Aktiver Heckspoiler</span>
                 </div>
             </div>
+
+            <!-- Performance Tuning -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-wrench"></i> Performance Tuning</h3>
+
+                <div class="control-item" style="margin-bottom: 15px;">
+                    <label style="font-size: 0.85rem; color: var(--text-primary); display: block; margin-bottom: 8px;">Reifenmischung</label>
+                    <div class="toggle-group three-cols">
+                        <button class="toggle-btn active" id="tire-street">Street</button>
+                        <button class="toggle-btn" id="tire-sport">Sport</button>
+                        <button class="toggle-btn" id="tire-track">Track</button>
+                    </div>
+                </div>
+
+                <div class="slider-container" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; color: var(--text-primary);">
+                    <div class="slider-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="slider-suspension">Fahrwerkshärte (<span id="val-suspension">5</span>)</label>
+                        <input type="range" id="slider-suspension" min="1" max="10" step="1" value="5" style="width: 50%; accent-color: var(--brand-orange);">
+                    </div>
+                    <div class="slider-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="slider-wing">Flügelwinkel (<span id="val-wing">5</span>°)</label>
+                        <input type="range" id="slider-wing" min="0" max="15" step="1" value="5" style="width: 50%; accent-color: var(--brand-orange);">
+                    </div>
+                    <div class="slider-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="slider-weight">Gewichtsreduktion (<span id="val-weight">0</span> kg)</label>
+                        <input type="range" id="slider-weight" min="0" max="200" step="10" value="0" style="width: 50%; accent-color: var(--brand-orange);">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lap Time Predictor -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-stopwatch"></i> Rundenzeit-Prognose</h3>
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">Nürburgring Nordschleife</span>
+                        <span id="time-nurburgring" style="font-size: 1rem; font-weight: 600; color: var(--brand-orange); font-variant-numeric: tabular-nums;">06:55.20</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">Spa-Francorchamps</span>
+                        <span id="time-spa" style="font-size: 1rem; font-weight: 600; color: var(--brand-orange); font-variant-numeric: tabular-nums;">02:18.40</span>
+                    </div>
+                </div>
+            </div>
             
             <!-- Showroom Lighting Presets -->
             <div class="control-group">
