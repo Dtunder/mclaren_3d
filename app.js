@@ -16,6 +16,7 @@ let paintParts = [], rimParts = [], caliperParts = [];
 let headlights = [], taillights = [];
 let wheels = [];
 let spoiler = null; // object.009_cb_0 (McLaren active wing)
+let mainCeilingLight, keyNeonCyanLight, rimNeonOrangeLight; // Showroom Lights
 
 // Materials configuration
 const materials = {
@@ -43,6 +44,9 @@ const rimSport = document.getElementById('rim-sport');
 const rimAero = document.getElementById('rim-aero');
 const caliperButtons = document.querySelectorAll('.caliper-btn');
 const spoilerToggle = document.getElementById('spoiler-toggle');
+const lightNeonBtn = document.getElementById('light-neon');
+const lightStudioBtn = document.getElementById('light-studio');
+const lightSunsetBtn = document.getElementById('light-sunset');
 const lightsToggle = document.getElementById('lights-toggle');
 const btnSpin = document.getElementById('btn-spin');
 const btnReset = document.getElementById('btn-reset');
@@ -235,24 +239,24 @@ function setupLighting() {
     scene.add(ambient);
 
     // Main Studio ceiling light (creates shadows)
-    const mainCeiling = new THREE.DirectionalLight(0xffffff, 2.0);
-    mainCeiling.position.set(0, 10, 0);
-    mainCeiling.castShadow = true;
-    mainCeiling.shadow.mapSize.width = 2048;
-    mainCeiling.shadow.mapSize.height = 2048;
-    mainCeiling.shadow.camera.near = 0.5;
-    mainCeiling.shadow.camera.far = 15;
-    mainCeiling.shadow.bias = -0.0004;
-    scene.add(mainCeiling);
+    mainCeilingLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    mainCeilingLight.position.set(0, 10, 0);
+    mainCeilingLight.castShadow = true;
+    mainCeilingLight.shadow.mapSize.width = 2048;
+    mainCeilingLight.shadow.mapSize.height = 2048;
+    mainCeilingLight.shadow.camera.near = 0.5;
+    mainCeilingLight.shadow.camera.far = 15;
+    mainCeilingLight.shadow.bias = -0.0004;
+    scene.add(mainCeilingLight);
 
     // Futuristic LED Side bars (simulated via directional lighting)
-    const keyNeonCyan = new THREE.DirectionalLight(0x00ffff, 1.2);
-    keyNeonCyan.position.set(5, 3, -5);
-    scene.add(keyNeonCyan);
+    keyNeonCyanLight = new THREE.DirectionalLight(0x00ffff, 1.2);
+    keyNeonCyanLight.position.set(5, 3, -5);
+    scene.add(keyNeonCyanLight);
 
-    const rimNeonOrange = new THREE.DirectionalLight(0xff5a00, 1.5);
-    rimNeonOrange.position.set(-5, 3, 5);
-    scene.add(rimNeonOrange);
+    rimNeonOrangeLight = new THREE.DirectionalLight(0xff5a00, 1.5);
+    rimNeonOrangeLight.position.set(-5, 3, 5);
+    scene.add(rimNeonOrangeLight);
 
     // Extra highlight from the front
     const frontSpot = new THREE.SpotLight(0xffffff, 1.5, 20, Math.PI / 6, 0.5, 1);
@@ -379,6 +383,66 @@ function loadModel() {
 }
 
 function setupEventListeners() {
+    // Lighting Presets
+    if (lightNeonBtn && lightStudioBtn && lightSunsetBtn) {
+        lightNeonBtn.addEventListener('click', () => {
+            lightNeonBtn.classList.add('active');
+            lightStudioBtn.classList.remove('active');
+            lightSunsetBtn.classList.remove('active');
+
+            if (keyNeonCyanLight) {
+                keyNeonCyanLight.intensity = 1.2;
+                keyNeonCyanLight.color.setHex(0x00ffff);
+            }
+            if (rimNeonOrangeLight) {
+                rimNeonOrangeLight.intensity = 1.5;
+                rimNeonOrangeLight.color.setHex(0xff5a00);
+            }
+            if (mainCeilingLight) {
+                mainCeilingLight.intensity = 2.0;
+                mainCeilingLight.color.setHex(0xffffff);
+            }
+        });
+
+        lightStudioBtn.addEventListener('click', () => {
+            lightStudioBtn.classList.add('active');
+            lightNeonBtn.classList.remove('active');
+            lightSunsetBtn.classList.remove('active');
+
+            if (keyNeonCyanLight) {
+                keyNeonCyanLight.intensity = 0.5;
+                keyNeonCyanLight.color.setHex(0xffffff);
+            }
+            if (rimNeonOrangeLight) {
+                rimNeonOrangeLight.intensity = 0.5;
+                rimNeonOrangeLight.color.setHex(0xffffff);
+            }
+            if (mainCeilingLight) {
+                mainCeilingLight.intensity = 3.5;
+                mainCeilingLight.color.setHex(0xffffff);
+            }
+        });
+
+        lightSunsetBtn.addEventListener('click', () => {
+            lightSunsetBtn.classList.add('active');
+            lightNeonBtn.classList.remove('active');
+            lightStudioBtn.classList.remove('active');
+
+            if (keyNeonCyanLight) {
+                keyNeonCyanLight.intensity = 0.4;
+                keyNeonCyanLight.color.setHex(0xffaa44);
+            }
+            if (rimNeonOrangeLight) {
+                rimNeonOrangeLight.intensity = 2.5;
+                rimNeonOrangeLight.color.setHex(0xff3300);
+            }
+            if (mainCeilingLight) {
+                mainCeilingLight.intensity = 0.8;
+                mainCeilingLight.color.setHex(0xffddaa);
+            }
+        });
+    }
+
     // 0. Model Toggle
     modelGlbBtn.addEventListener('click', () => {
         if (carModel === carModelGlb) return;
