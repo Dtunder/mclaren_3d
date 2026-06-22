@@ -51,6 +51,9 @@ const lightsToggle = document.getElementById('lights-toggle');
 const btnSpin = document.getElementById('btn-spin');
 const btnReset = document.getElementById('btn-reset');
 const btnDrive = document.getElementById('btn-drive');
+const btnCrashTest = document.getElementById('btn-crash-test');
+
+const telemetryHud = document.getElementById('telemetry-hud');
 
 const loaderContainer = document.getElementById('loader-container');
 const progressBar = document.getElementById('progress-bar');
@@ -65,8 +68,16 @@ let config = {
     spoilerActive: true,
     lightsActive: true,
     autoRotate: false,
-    driveMode: false
+    driveMode: false,
+    crashTestMode: false
 };
+
+let crashState = 0; // 0: idle, 1: accelerating, 2: crashed
+let crashTime = 0;
+let initialCarPosition = null;
+let crashWall = null;
+let carbonParts = [];
+let originalCarbonMaterial = null;
 
 // Base positions of the spoiler for active aerodynamics animation
 let initialSpoilerY = null;
@@ -193,6 +204,16 @@ function setupMaterials() {
         roughness: 0.45,
         metalness: 0.65
     });
+    originalCarbonMaterial = materials.carbon;
+
+    // Glowing Cyan/Green material for crash test safety cell
+    materials.carbonGlowing = new THREE.MeshStandardMaterial({
+        color: 0x00ffaa,
+        emissive: 0x00ffaa,
+        emissiveIntensity: 1.5,
+        roughness: 0.2,
+        metalness: 0.8
+    });
 
     // Metallic brake discs
     materials.brakeDisc = new THREE.MeshStandardMaterial({
@@ -231,6 +252,19 @@ function createEnvironment() {
     const gridHelper = new THREE.GridHelper(30, 30, 0xff5a00, 0x151520);
     gridHelper.position.y = 0.005;
     scene.add(gridHelper);
+
+    // Crash Wall (Invisible initially)
+    const wallGeo = new THREE.BoxGeometry(10, 5, 1);
+    const wallMat = new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        roughness: 0.8,
+        metalness: 0.2,
+        transparent: true,
+        opacity: 0.0
+    });
+    crashWall = new THREE.Mesh(wallGeo, wallMat);
+    crashWall.position.set(0, 2.5, 20); // Far away
+    scene.add(crashWall);
 }
 
 function setupLighting() {
@@ -329,6 +363,7 @@ function loadModel() {
                     // Apply carbon fiber trim / spoiler wing
                     else if (name.includes('_cb_')) {
                         child.material = materials.carbon;
+                        carbonParts.push(child);
                         
                         // "object.009_cb_0" is the active spoiler wing
                         if (name.includes('009')) {
@@ -677,6 +712,62 @@ function setupEventListeners() {
         }
     });
 
+    // 10. Crash Test Mode
+    btnCrashTest.addEventListener('click', () => {
+        if (!config.crashTestMode) {
+            // Start crash test
+            config.crashTestMode = true;
+            config.autoRotate = false;
+            config.driveMode = false;
+            btnSpin.classList.remove('highlight');
+            btnDrive.classList.remove('highlight');
+            btnCrashTest.classList.add('highlight');
+
+            crashState = 1; // accelerating
+            crashTime = 0;
+
+            // Save initial car position if not saved
+            if (!initialCarPosition && carModel) {
+                initialCarPosition = carModel.position.clone();
+            }
+
+            // Move wall to front of car
+            if (carModel && crashWall) {
+                crashWall.position.set(initialCarPosition.x, 2.5, initialCarPosition.z + 20); // 20 units ahead
+                crashWall.material.opacity = 1.0;
+            }
+
+            // Position camera for cinematic crash
+            camera.position.set(8, 3, initialCarPosition.z + 10);
+            controls.target.set(initialCarPosition.x, 1, initialCarPosition.z + 20);
+
+            telemetryHud.classList.add('hidden');
+        } else {
+            // Reset crash test
+            config.crashTestMode = false;
+            btnCrashTest.classList.remove('highlight');
+            crashState = 0;
+
+            if (carModel && initialCarPosition) {
+                carModel.position.copy(initialCarPosition);
+            }
+            if (crashWall) {
+                crashWall.material.opacity = 0.0;
+            }
+
+            // Revert materials
+            carbonParts.forEach(part => {
+                part.material = originalCarbonMaterial;
+            });
+
+            telemetryHud.classList.add('hidden');
+
+            // Reset Camera
+            controls.reset();
+            camera.position.set(5.5, 2.0, 5.5);
+        }
+    });
+
     window.addEventListener('resize', onWindowResize);
 }
 
@@ -726,6 +817,44 @@ function animate() {
         camera.position.z = Math.cos(time * 0.4) * 6.8;
         camera.position.y = 1.5 + Math.sin(time * 2.5) * 0.04; // High-frequency road vibration
         controls.target.set(0, 0.45 + Math.sin(time * 1.8) * 0.01, 0);
+    }
+
+    // Crash Test Mode Animation
+    if (config.crashTestMode && carModel && crashWall) {
+        if (crashState === 1) { // Accelerating
+            carModel.position.z += 0.8; // Move fast
+
+            // Spin wheels fast
+            wheels.forEach(wheel => {
+                wheel.rotation.y += 0.8;
+            });
+
+            // Check collision with wall
+            if (carModel.position.z >= crashWall.position.z - 2.5) { // Approximate front of car hitting wall
+                carModel.position.z = crashWall.position.z - 2.5; // Snap to wall
+                crashState = 2; // Crashed
+                crashTime = time;
+
+                // Show telemetry HUD
+                telemetryHud.classList.remove('hidden');
+
+                // Change carbon parts to glowing material
+                carbonParts.forEach(part => {
+                    part.material = materials.carbonGlowing;
+                });
+
+                // Screen shake
+                camera.position.x += (Math.random() - 0.5) * 1.5;
+                camera.position.y += (Math.random() - 0.5) * 1.5;
+                camera.position.z += (Math.random() - 0.5) * 1.5;
+            }
+        } else if (crashState === 2) { // Crashed
+            // Slight residual shake for a moment
+            if (time - crashTime < 0.5) {
+                camera.position.x += (Math.random() - 0.5) * 0.1;
+                camera.position.y += (Math.random() - 0.5) * 0.1;
+            }
+        }
     }
 
     renderer.render(scene, camera);
