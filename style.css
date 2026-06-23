@@ -520,3 +520,39 @@ input:checked + .slider:before {
     letter-spacing: 1px;
 }
 
+/* Crash Modal Overlay */
+.crash-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    z-index: 1000;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(var(--glass-blur));
+    color: white;
+    display: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    min-width: 300px;
+}
+
+.crash-modal h2 {
+    margin-bottom: 1rem;
+    color: #ff003c;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.crash-modal p {
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    color: var(--text-primary);
+}
+
+.crash-modal .action-btn {
+    margin-top: 1rem;
+    width: 100%;
+}

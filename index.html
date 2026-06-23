@@ -145,6 +145,39 @@
                 </div>
             </div>
             
+            <!-- Safety Upgrades -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-shield-halved"></i> Sicherheits-Upgrades</h3>
+                <div class="checkbox-container">
+                    <label class="switch">
+                        <input type="checkbox" id="safe-carbon" checked>
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Carbon Monocell (+20%)</span>
+                </div>
+                <div class="checkbox-container">
+                    <label class="switch">
+                        <input type="checkbox" id="safe-airbags" checked>
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Advanced Airbags (+15%)</span>
+                </div>
+                <div class="checkbox-container">
+                    <label class="switch">
+                        <input type="checkbox" id="safe-deform">
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Crash Deform Zones (+15%)</span>
+                </div>
+                <div class="checkbox-container">
+                    <label class="switch">
+                        <input type="checkbox" id="safe-harness">
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Multi-Point Harness (+10%)</span>
+                </div>
+            </div>
+
             <!-- Showroom Lighting Presets -->
             <div class="control-group">
                 <h3><i class="fa-solid fa-lightbulb"></i> Beleuchtung-Presets</h3>
@@ -174,11 +207,22 @@
                 <button class="action-btn" id="btn-spin"><i class="fa-solid fa-arrows-spin"></i> Auto-Rotation</button>
                 <button class="action-btn" id="btn-reset"><i class="fa-solid fa-camera"></i> Kamera zurücksetzen</button>
                 <button class="action-btn highlight" id="btn-drive"><i class="fa-solid fa-gauge"></i> Testfahrt-Modus</button>
+                <button class="action-btn crash-btn" id="btn-crash" style="background: #ff003c; border-color: #ff003c; color: white;"><i class="fa-solid fa-car-burst"></i> 350 km/h Crash Test</button>
             </div>
             <div class="instruction">
                 <p><i class="fa-solid fa-computer-mouse"></i> Ziehen zum Rotieren | Scrollen zum Zoomen | Rechtsklick zum Verschieben</p>
             </div>
         </footer>
+
+        <!-- Crash Test Results Modal -->
+        <div id="crash-results-modal" class="crash-modal">
+            <div class="modal-content">
+                <h2>CRASH TEST ERGEBNIS</h2>
+                <p>Impact Speed: 350 km/h</p>
+                <p id="crash-survival-text">Survival Probability: 40%</p>
+                <button class="action-btn" id="btn-crash-reset">Abschließen</button>
+            </div>
+        </div>
     </main>
 
     <!-- Main Application Logic -->
