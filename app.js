@@ -72,6 +72,14 @@ let config = {
 let initialSpoilerY = null;
 let initialSpoilerZ = null;
 
+// Driving Physics & Inputs
+const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+let carSpeed = 0;
+const maxSpeed = 0.3;
+const carAcceleration = 0.005;
+const carDeceleration = 0.002;
+const turnSpeed = 0.03;
+
 function init() {
     // 1. Create Scene
     scene = new THREE.Scene();
@@ -671,10 +679,43 @@ function setupEventListeners() {
     btnDrive.addEventListener('click', () => {
         config.driveMode = !config.driveMode;
         btnDrive.classList.toggle('highlight', config.driveMode);
+        const instructionText = document.getElementById('instruction-text');
+
         if (config.driveMode) {
             config.autoRotate = false;
             btnSpin.classList.remove('highlight');
+            if (instructionText) {
+                instructionText.innerHTML = '<i class="fa-solid fa-keyboard"></i> <b>W/A/S/D</b> oder <b>Pfeiltasten</b> zum Fahren | Shift zum Beschleunigen';
+            }
+        } else {
+            // Reset velocity when exiting drive mode
+            carPhysics.speed = 0;
+            carPhysics.steeringAngle = 0;
+            if (instructionText) {
+                instructionText.innerHTML = '<i class="fa-solid fa-computer-mouse"></i> Ziehen zum Rotieren | Scrollen zum Zoomen | Rechtsklick zum Verschieben';
+            }
         }
+    });
+
+    // 10. Manual Driving Key Listeners
+    window.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        if (keys.hasOwnProperty(key)) {
+            keys[key] = true;
+        } else if (e.key === 'ArrowUp') { keys['ArrowUp'] = true; }
+        else if (e.key === 'ArrowDown') { keys['ArrowDown'] = true; }
+        else if (e.key === 'ArrowLeft') { keys['ArrowLeft'] = true; }
+        else if (e.key === 'ArrowRight') { keys['ArrowRight'] = true; }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        const key = e.key.toLowerCase();
+        if (keys.hasOwnProperty(key)) {
+            keys[key] = false;
+        } else if (e.key === 'ArrowUp') { keys['ArrowUp'] = false; }
+        else if (e.key === 'ArrowDown') { keys['ArrowDown'] = false; }
+        else if (e.key === 'ArrowLeft') { keys['ArrowLeft'] = false; }
+        else if (e.key === 'ArrowRight') { keys['ArrowRight'] = false; }
     });
 
     window.addEventListener('resize', onWindowResize);
@@ -714,18 +755,66 @@ function animate() {
     }
 
     // Interactive drive mode
-    if (config.driveMode) {
-        // Spin wheels
+    if (config.driveMode && carModel) {
+        // Forward / Backward
+        if (keys.w || keys.ArrowUp) {
+            carSpeed += carAcceleration;
+            if (carSpeed > maxSpeed) carSpeed = maxSpeed;
+        } else if (keys.s || keys.ArrowDown) {
+            carSpeed -= carAcceleration;
+            if (carSpeed < -maxSpeed / 2) carSpeed = -maxSpeed / 2; // reverse slower
+        } else {
+            // Decelerate
+            if (carSpeed > 0) {
+                carSpeed -= carDeceleration;
+                if (carSpeed < 0) carSpeed = 0;
+            } else if (carSpeed < 0) {
+                carSpeed += carDeceleration;
+                if (carSpeed > 0) carSpeed = 0;
+            }
+        }
+
+        // Turning (only turn if moving)
+        if (Math.abs(carSpeed) > 0.01) {
+            let turnDirection = carSpeed > 0 ? 1 : -1;
+            if (keys.a || keys.ArrowLeft) {
+                carModel.rotation.y += turnSpeed * turnDirection;
+            } else if (keys.d || keys.ArrowRight) {
+                carModel.rotation.y -= turnSpeed * turnDirection;
+            }
+        }
+
+        // Apply movement
+        carModel.position.x += Math.sin(carModel.rotation.y) * carSpeed;
+        carModel.position.z += Math.cos(carModel.rotation.y) * carSpeed;
+
+        // Spin wheels based on actual speed
         wheels.forEach(wheel => {
-            // Rotates wheels around their local rotation axis (which is local Y after importing)
-            wheel.rotation.y += 0.25;
+            wheel.rotation.y += carSpeed * 2.0; // multiplier to make it look right
         });
 
-        // Simulates dynamic driving camera track
-        camera.position.x = Math.sin(time * 0.4) * 6.8;
-        camera.position.z = Math.cos(time * 0.4) * 6.8;
-        camera.position.y = 1.5 + Math.sin(time * 2.5) * 0.04; // High-frequency road vibration
-        controls.target.set(0, 0.45 + Math.sin(time * 1.8) * 0.01, 0);
+        // Simulates dynamic driving camera track (Follow camera)
+        // Camera follows behind the car based on its rotation
+        const followDistance = 7.0;
+        const followHeight = 2.0;
+
+        const targetCamX = carModel.position.x - Math.sin(carModel.rotation.y) * followDistance;
+        const targetCamZ = carModel.position.z - Math.cos(carModel.rotation.y) * followDistance;
+        const targetCamY = carModel.position.y + followHeight;
+
+        // Smoothly move camera
+        camera.position.x += (targetCamX - camera.position.x) * 0.05;
+        camera.position.z += (targetCamZ - camera.position.z) * 0.05;
+        camera.position.y += (targetCamY - camera.position.y) * 0.05;
+
+        // Camera looks at car
+        const targetLookX = carModel.position.x;
+        const targetLookY = carModel.position.y + 0.8;
+        const targetLookZ = carModel.position.z;
+
+        controls.target.x += (targetLookX - controls.target.x) * 0.1;
+        controls.target.y += (targetLookY - controls.target.y) * 0.1;
+        controls.target.z += (targetLookZ - controls.target.z) * 0.1;
     }
 
     renderer.render(scene, camera);
