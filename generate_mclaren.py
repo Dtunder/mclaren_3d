@@ -4,59 +4,59 @@ def generate_obj(filename):
     # We define the right half (x >= 0) and then mirror it.
     # [x, y, z]
     # Centerline points (x=0)
-    c_nose_top = [0, 0.4, 2.3]
-    c_nose_bot = [0, 0.15, 2.3]
-    c_hood = [0, 0.65, 1.2]
-    c_windshield_base = [0, 0.75, 0.6]
-    c_roof_front = [0, 1.15, 0.1]
-    c_roof_rear = [0, 1.10, -0.6]
-    c_engine_cover = [0, 0.8, -1.5]
-    c_tail_top = [0, 0.75, -2.2]
-    c_tail_bot = [0, 0.25, -2.2]
-    c_floor_front = [0, 0.1, 1.5]
-    c_floor_mid = [0, 0.1, 0.0]
-    c_floor_rear = [0, 0.1, -1.5]
+    c_nose_top = [0, 0.25, 2.8]
+    c_nose_bot = [0, 0.05, 2.8]
+    c_hood = [0, 0.45, 1.5]
+    c_windshield_base = [0, 0.60, 0.8]
+    c_roof_front = [0, 0.90, 0.0]
+    c_roof_rear = [0, 0.85, -0.8]
+    c_engine_cover = [0, 0.60, -2.0]
+    c_tail_top = [0, 0.35, -3.5]
+    c_tail_bot = [0, 0.15, -3.5]
+    c_floor_front = [0, 0.05, 2.0]
+    c_floor_mid = [0, 0.05, 0.0]
+    c_floor_rear = [0, 0.05, -2.0]
     
     # Right side points (x > 0)
     # Nose/Front Bumper
-    r_nose_top = [0.8, 0.4, 2.1]
-    r_nose_bot = [0.8, 0.15, 2.1]
+    r_nose_top = [0.7, 0.25, 2.5]
+    r_nose_bot = [0.7, 0.05, 2.5]
     
     # Front Fender/Wheel arch
-    r_fender_front = [0.95, 0.4, 1.6]
-    r_fender_top = [0.95, 0.75, 1.2]
-    r_fender_rear = [0.95, 0.4, 0.8]
+    r_fender_front = [0.9, 0.35, 1.8]
+    r_fender_top = [0.9, 0.65, 1.2]
+    r_fender_rear = [0.9, 0.35, 0.8]
     
     # Side Skirt/Door
-    r_door_top_front = [0.95, 0.75, 0.6]
-    r_door_top_rear = [1.0, 0.8, -0.6]
-    r_door_bot_front = [0.9, 0.15, 0.8]
-    r_door_bot_rear = [0.95, 0.15, -0.8]
-    r_scoop_in = [0.8, 0.5, -0.7] # McLaren style side scoop
+    r_door_top_front = [0.85, 0.65, 0.6]
+    r_door_top_rear = [0.9, 0.7, -0.6]
+    r_door_bot_front = [0.85, 0.05, 0.8]
+    r_door_bot_rear = [0.85, 0.05, -0.8]
+    r_scoop_in = [0.75, 0.4, -0.7] # McLaren style side scoop
     
     # Rear Fender/Wheel arch
-    r_rfender_front = [1.0, 0.4, -0.8]
-    r_rfender_top = [1.05, 0.85, -1.4]
-    r_rfender_rear = [1.0, 0.4, -1.9]
+    r_rfender_front = [0.9, 0.35, -1.0]
+    r_rfender_top = [0.95, 0.75, -1.6]
+    r_rfender_rear = [0.9, 0.35, -2.5]
     
     # Tail
-    r_tail_top = [0.85, 0.75, -2.1]
-    r_tail_bot = [0.85, 0.25, -2.1]
+    r_tail_top = [0.7, 0.35, -3.4]
+    r_tail_bot = [0.7, 0.15, -3.4]
     
     # Cabin (Greenhouse)
-    r_windshield_base = [0.6, 0.75, 0.6]
-    r_roof_front = [0.5, 1.1, 0.1]
-    r_roof_rear = [0.5, 1.05, -0.6]
-    r_window_rear_base = [0.5, 0.8, -1.2]
+    r_windshield_base = [0.5, 0.60, 0.8]
+    r_roof_front = [0.4, 0.90, 0.0]
+    r_roof_rear = [0.35, 0.85, -0.8]
+    r_window_rear_base = [0.3, 0.65, -1.6]
     
     # Spoiler
-    s_mount_base = [0.4, 0.75, -1.9]
-    s_mount_top = [0.4, 0.95, -2.0]
-    s_wing_center_front = [0, 0.95, -1.9]
-    s_wing_center_rear = [0, 0.98, -2.2]
-    s_wing_tip_front = [0.9, 0.95, -1.9]
-    s_wing_tip_rear = [0.9, 0.98, -2.2]
-    s_wing_endplate_bot = [0.9, 0.85, -2.2]
+    s_mount_base = [0.3, 0.45, -3.0]
+    s_mount_top = [0.3, 0.60, -3.2]
+    s_wing_center_front = [0, 0.60, -3.1]
+    s_wing_center_rear = [0, 0.62, -3.4]
+    s_wing_tip_front = [0.8, 0.58, -3.1]
+    s_wing_tip_rear = [0.8, 0.60, -3.4]
+    s_wing_endplate_bot = [0.8, 0.50, -3.4]
 
     # Assemble all unique points
     points = [
