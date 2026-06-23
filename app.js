@@ -11,6 +11,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 let scene, camera, renderer, controls;
 let carModel;
 let carModelGlb = null;
+let crashWall = null; // Crash Test Obstacle
 let carModelObj = null;
 let paintParts = [], rimParts = [], caliperParts = [];
 let headlights = [], taillights = [];
@@ -52,6 +53,18 @@ const btnSpin = document.getElementById('btn-spin');
 const btnReset = document.getElementById('btn-reset');
 const btnDrive = document.getElementById('btn-drive');
 
+// Crash Test Elements
+const btnCrash = document.getElementById('btn-crash');
+const crashModal = document.getElementById('crash-results-modal');
+const btnCrashReset = document.getElementById('btn-crash-reset');
+const crashSurvivalText = document.getElementById('crash-survival-text');
+
+// Safety Upgrades
+const safeCarbon = document.getElementById('safe-carbon');
+const safeAirbags = document.getElementById('safe-airbags');
+const safeDeform = document.getElementById('safe-deform');
+const safeHarness = document.getElementById('safe-harness');
+
 const loaderContainer = document.getElementById('loader-container');
 const progressBar = document.getElementById('progress-bar');
 const loaderStatus = document.getElementById('loader-status');
@@ -65,7 +78,10 @@ let config = {
     spoilerActive: true,
     lightsActive: true,
     autoRotate: false,
-    driveMode: false
+    driveMode: false,
+    crashTestMode: false,
+    crashImpactDone: false,
+    cameraShakeAmount: 0
 };
 
 // Base positions of the spoiler for active aerodynamics animation
@@ -291,6 +307,10 @@ function loadModel() {
             // Center the model in X and Z, and place the lowest point on the floor (Y = 0)
             carModel.position.set(-center.x * scaleFactor, -scaledMinY, -center.z * scaleFactor);
             
+            // Save initial positioning for resets
+            carModel.userData.initialPosition = carModel.position.clone();
+            carModel.userData.initialRotation = carModel.rotation.clone();
+
             // Traverse model nodes and assign materials matching P1 structure
             carModel.traverse((child) => {
                 if (child.isMesh) {
@@ -504,6 +524,10 @@ function setupEventListeners() {
                     // Center the model in X and Z, and place the lowest point on the floor (Y = 0)
                     carModelObj.position.set(-center.x * scaleFactor, -scaledMinY, -center.z * scaleFactor);
 
+                    // Save initial positioning for resets
+                    carModelObj.userData.initialPosition = carModelObj.position.clone();
+                    carModelObj.userData.initialRotation = carModelObj.rotation.clone();
+
                     // Apply materials (simple approach: apply body material to all meshes)
                     carModelObj.traverse((child) => {
                         if (child.isMesh) {
@@ -674,8 +698,68 @@ function setupEventListeners() {
         if (config.driveMode) {
             config.autoRotate = false;
             btnSpin.classList.remove('highlight');
+            config.crashTestMode = false; // Disable crash test if drive is enabled
         }
     });
+
+    // 10. Crash Test Integration
+    if (btnCrash) {
+        btnCrash.addEventListener('click', () => {
+            // Reset previous state
+            config.driveMode = false;
+            btnDrive.classList.remove('highlight');
+            config.autoRotate = false;
+            btnSpin.classList.remove('highlight');
+
+            config.crashTestMode = true;
+            config.crashImpactDone = false;
+
+            // Set dramatic camera angle
+            camera.position.set(-6, 2, -6);
+            controls.target.set(0, 0.5, 0);
+
+            // Generate or reset wall
+            if (!crashWall) {
+                const wallGeo = new THREE.BoxGeometry(15, 6, 2);
+                const wallMat = new THREE.MeshStandardMaterial({
+                    color: 0x555555,
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                crashWall = new THREE.Mesh(wallGeo, wallMat);
+                crashWall.castShadow = true;
+                crashWall.receiveShadow = true;
+                scene.add(crashWall);
+            }
+            // Position far back down the Z axis
+            crashWall.position.set(0, 3, -60);
+        });
+    }
+
+    if (btnCrashReset) {
+        btnCrashReset.addEventListener('click', () => {
+            config.crashTestMode = false;
+            config.crashImpactDone = false;
+            config.cameraShakeAmount = 0;
+
+            crashModal.style.display = 'none';
+
+            // Hide wall
+            if (crashWall) {
+                crashWall.position.set(0, -100, 0);
+            }
+
+            // Reset car pos/rot
+            if (carModel && carModel.userData.initialPosition) {
+                carModel.position.copy(carModel.userData.initialPosition);
+                carModel.rotation.copy(carModel.userData.initialRotation);
+            }
+
+            // Reset view
+            controls.reset();
+            camera.position.set(5.5, 2.0, 5.5);
+        });
+    }
 
     window.addEventListener('resize', onWindowResize);
 }
@@ -726,6 +810,75 @@ function animate() {
         camera.position.z = Math.cos(time * 0.4) * 6.8;
         camera.position.y = 1.5 + Math.sin(time * 2.5) * 0.04; // High-frequency road vibration
         controls.target.set(0, 0.45 + Math.sin(time * 1.8) * 0.01, 0);
+    }
+
+    // Crash Test Simulation
+    if (config.crashTestMode) {
+        if (!config.crashImpactDone) {
+            // Spin wheels aggressively to simulate 350 km/h
+            wheels.forEach(wheel => {
+                wheel.rotation.y += 1.2;
+            });
+
+            // Move wall rapidly towards the car (Simulating the car moving fast)
+            if (crashWall) {
+                crashWall.position.z += 1.8;
+
+                // Collision Detection threshold (wall hits car at z = -2.5)
+                if (crashWall.position.z >= -2.5) {
+                    config.crashImpactDone = true;
+
+                    // Displace car visually (violent crash physics)
+                    if (carModel) {
+                        carModel.position.z -= 0.5;
+                        carModel.position.y += 0.4;
+                        carModel.rotation.x = -Math.PI / 10;
+                        carModel.rotation.z = Math.PI / 12;
+                    }
+
+                    // Trigger extreme camera shake
+                    config.cameraShakeAmount = 0.8;
+
+                    // Calculate Survival Probability
+                    let probability = 40; // Base chance
+                    if (safeCarbon && safeCarbon.checked) probability += 20;
+                    if (safeAirbags && safeAirbags.checked) probability += 15;
+                    if (safeDeform && safeDeform.checked) probability += 15;
+                    if (safeHarness && safeHarness.checked) probability += 10;
+
+                    // Update Modal UI
+                    if (crashSurvivalText) {
+                        crashSurvivalText.innerText = `Survival Probability: ${probability}%`;
+                        if (probability >= 85) {
+                            crashSurvivalText.style.color = '#0df824'; // Green
+                        } else if (probability >= 55) {
+                            crashSurvivalText.style.color = '#ffcc00'; // Yellow
+                        } else {
+                            crashSurvivalText.style.color = '#ff0000'; // Red
+                        }
+                    }
+
+                    // Show Modal after short delay for dramatic effect
+                    setTimeout(() => {
+                        if (crashModal) crashModal.style.display = 'block';
+                    }, 1200);
+                }
+            }
+        }
+
+        // Apply decaying camera shake post-impact
+        if (config.cameraShakeAmount > 0.01) {
+            const shake = config.cameraShakeAmount;
+            camera.position.x += (Math.random() - 0.5) * shake;
+            camera.position.y += (Math.random() - 0.5) * shake;
+            camera.position.z += (Math.random() - 0.5) * shake;
+
+            controls.target.x += (Math.random() - 0.5) * shake * 0.5;
+            controls.target.y += (Math.random() - 0.5) * shake * 0.5;
+
+            // Exponential decay
+            config.cameraShakeAmount *= 0.92;
+        }
     }
 
     renderer.render(scene, camera);
